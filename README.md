@@ -1,4 +1,4 @@
-#Analizador Léxico e Sintático sem Retrocessos
+Analizador Léxico e Sintático sem Retrocessos
 
 Trabalho de Linguagem Formais 2018/2
 Ciências da Computação
@@ -22,9 +22,8 @@ Gramaticas geradas estão comentadas em cada uma de suas respectivas funções. 
 
 Analizador Sintatico foi desenvolvido sem retrocessos.
 
-#Funcionamento
+Funcionamento
 
 É necessário criar um arquivo **entrada.cpp** que conterá o código há ser analizádo. O arquivo entrada.cpp deve está no mesmo diretório onde está o Analizador.exe.
 
 Analizador Léxico gera o arquivo **Saida.lex** que conté: Token, Lexema, Linha e Coluna.
-
