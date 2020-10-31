@@ -1,5 +1,12 @@
-¿\&§	T000 = 2
-	T001=a-T000
-	b=T001
-	T002 = 0
-	t=T002
+	ini
+LB000:
+	cond
+	T000 = 10
+	if cond < T000 goto LB001
+	goto LB002
+LB001:
+	T001 = 3
+	a=T001
+	inc
+	goto LB000
+LB002

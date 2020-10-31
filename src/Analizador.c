@@ -682,23 +682,34 @@ int DoWhile(){
 	}
 	else{return 0;}
 }
+*/
 
 //For -> for ( EV ; EV ; EV ) BlocoComando
-int For(){
+int For(char for_c[], char lbreak[]){
+	char Rel1_c[MAX_COD],Rel1_p[MAX_COD],Rel2_c[MAX_COD],Rel2_p[MAX_COD],Rel3_c[MAX_COD],Rel3_p[MAX_COD],Com_c[MAX_COD];
+    char labelini[10],labeltrue[10],labelfim[10];
+
 	if(tk == TKFor){// for
+		geralabel(labelini);
+		geralabel(labeltrue);
+		geralabel(labelfim);
+
 		getToken();
 		if(tk == TKAbreParenteses){// (
 			getToken();
-			if (EV()){
+			if (Rel(Rel1_c, "", "")){
 				if(tk == TKPontoEVirgula){// ;
 					getToken();
-					if (EV()){
+					if (Rel(Rel2_c, labeltrue, labelfim)){
 						if(tk == TKPontoEVirgula){// ;
 							getToken();
-							if (EV()){
+							if (Rel(Rel3_c, "", "")){
 								if(tk == TKFechaParenteses){// )
 									getToken();
-									if (BlocoComando()){
+									if (Com(Com_c, labelfim)){
+										//gera codigo for
+										sprintf(for_c,"%s%s:\n%s%s:\n%s%s\tgoto %s\n%s\n",
+														Rel1_c,labelini,Rel2_c,labeltrue,Com_c,Rel3_c,labelini,labelfim);
 										return 1;
 									}
 									else{return 0;}
@@ -720,6 +731,7 @@ int For(){
 	else{return 0;}
 }
 
+/*
 //EV -> E | ?
 int EV(){
 	if (E()){
@@ -727,7 +739,9 @@ int EV(){
 	}
 	else{return 1;}
 }
+*/
 
+/*
 //SwitchCase -> switch ( E ) Cases
 int SwitchCase(){
 	if(tk == TKSwitch){// switch
@@ -915,7 +929,7 @@ int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
     char E1_c[MAX_COD],E2_c[MAX_COD],R_sc[MAX_COD],E1_p[MAX_COD],E2_p[MAX_COD],R_sp[MAX_COD];
 
 	//todo mudar para E1
-    if (E11(E1_p,E1_c)){
+    if (E11(E1_p, E1_c)){
         char op[10];
         if (tk==TKMaior) strcpy(op,">");
         else if (tk==TKMenor) strcpy(op,"<");
@@ -943,7 +957,7 @@ int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
 				return 0;
 			break;
         default:
-            strcpy(Rel_c,E1_c);
+            strcpy(Rel_c, E1_c);
             return 1;
 			break;
         }
@@ -1464,8 +1478,9 @@ int E13(char E13_p[MAX_COD], char E13_c[MAX_COD]){
 //E14 -> id | id ++ | id -- | id ( CallFuncParam ) | inteiro | flutuante | ( E )
 int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 	if(tk == TKId){// id
-		strcpy(E14_c, "");
+		//strcpy(E14_c, "");
         strcpy(E14_p, lex);
+		sprintf(E14_c,"\t%s\n", E14_p);
 		getToken();
 		if(tk == TKDuploMais){// ++
 			getToken();
@@ -1679,6 +1694,12 @@ int Com(char Com_c[], char lbreak[]) {
 		}
 		else{return 0;}
 	}
+	else if(For(Com_c, lbreak)){
+		if(Com(Com_c, "")){
+			return 1;
+		}
+		else{return 0;}
+	}
 	//todo mudar para E1
 	else if(E(Com_c)){
 		if(tk==TKPontoEVirgula){
@@ -1730,7 +1751,7 @@ int main(int argc, char *argv[]){
 	fprintf(outLex, "		   Token	   Lexema   Linha   Coluna\n");
 
 	// EXPORTACAO DO CODIGO C3E
-	if ((outC3E = fopen("saida.kvmp","wt"))==NULL){
+	if ((outC3E = fopen("saida.kvmp", "wt"))==NULL){
         printf("Erro na abertura do arquivo de saida");
         exit(0);
     }
