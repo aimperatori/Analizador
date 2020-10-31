@@ -1,0 +1,11 @@
+		   Token	   Lexema   Linha   Coluna
+                    TKId                b       3        5
+                 TKAtrib                =       3        7
+                    TKId                a       3        9
+                 TKMenos                -       3       10
+               TKInteiro                2       3       11
+         TKPontoEVirgula                ;       3       12
+                    TKId                t       5        1
+                 TKAtrib                =       5        3
+               TKInteiro                0       5        5
+         TKPontoEVirgula                ;       5        6

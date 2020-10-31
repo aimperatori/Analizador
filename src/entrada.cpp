@@ -1,7 +1,5 @@
-int main(void) {
-	
-	if(1) { break; } a++;
-	
-	
-	return 1;
-}
+
+
+    b = a-2;
+
+t = 0;
