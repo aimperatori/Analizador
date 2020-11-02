@@ -36,3 +36,13 @@
                  TKAtrib                =       6       26
                TKInteiro               10       6       29
            TKFechaChaves                }       7        1
+                    TKIf               if       9        2
+        TKAbreParenteses                (       9        3
+                    TKId               zz       9        5
+            TKMaiorIgual               >=       9        8
+               TKInteiro                6       9       10
+       TKFechaParenteses                )       9       11
+                    TKId                t      10        5
+                 TKAtrib                =      10        7
+               TKInteiro                7      10        9
+         TKPontoEVirgula                ;      10       10

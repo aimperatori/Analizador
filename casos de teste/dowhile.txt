@@ -1,0 +1,34 @@
+do{
+    l = l + 3;
+    
+    a = 2 + 31;
+}while(w <= 33);
+
+do
+    l = l + 3;
+while(w <= 33);
+
+-----------------
+
+LB000:
+	T000 = 3
+	T001=l+T000
+	l=T001
+	T002 = 2
+	T003 = 31
+	T004=T002+T003
+	a=T004
+	T005 = 33
+	if w <= T005 goto LB000
+	goto LB001
+LB001:
+LB002:
+	T006 = 3
+	T007=l+T006
+	l=T007
+	T008 = 33
+	if w <= T008 goto LB002
+	goto LB003
+LB003:
+Reconheceu OK!
+

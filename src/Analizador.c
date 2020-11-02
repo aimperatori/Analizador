@@ -371,7 +371,6 @@ int E14(char[], char[]);
 int Return();
 void geralabel(char label[]);
 void geratemp(char temp[]);
-
 int Com_Composto(char Comp_c[]);
 int Com(char Com_c[], char lbreak[]);
 
@@ -401,7 +400,7 @@ void F_Printf_Erro(int x){
 	}
 
 	if(x) printf("Erro: esperava %s, linha %d coluna %d\n", string, lin, col-posl);
-	else printf("Erro: nao identificado linha %d coluna %d\n", lin, col-posl);
+	else  printf("Erro: nao identificado linha %d coluna %d\n", lin, col-posl);
 }
 
 void geralabel(char label[]){
@@ -651,21 +650,27 @@ int While(char while_c[], char lbreak[]){
 	else{return 0;}
 }
 
-/*
-//DoWhile -> do BlocoComando while ( E ) ;
-int DoWhile(){
+//DoWhile -> do Com while ( Rel ) ;
+int DoWhile(char dowhile_c[], char lbreak[]){
+	char Rel_c[MAX_COD],Rel_p[MAX_COD],Com_c[MAX_COD];
+    char labeltrue[10],labelfim[10];
+
 	if(tk == TKDo){// do
+		geralabel(labeltrue);
+		geralabel(labelfim);
 		getToken();
-		if(BlocoComando()){
+		if(Com(Com_c, "")){
 			if(tk == TKWhile){// while
 				getToken();
 				if(tk == TKAbreParenteses){// (
 					getToken();
-					if (E()){
+					if(Rel(Rel_c,labeltrue,labelfim)){
 						if(tk == TKFechaParenteses){// )
 							getToken();
 							if(tk == TKPontoEVirgula){// ;
 								getToken();
+								sprintf(dowhile_c,"%s:\n%s%s%s:\n",
+                                				labeltrue,Com_c,Rel_c,labelfim);
 								return 1;
 							}
 							else{F_Printf_Erro(TKPontoEVirgula);return 0;}
@@ -682,7 +687,6 @@ int DoWhile(){
 	}
 	else{return 0;}
 }
-*/
 
 //For -> for ( EV ; EV ; EV ) BlocoComando
 int For(char for_c[], char lbreak[]){
@@ -942,10 +946,9 @@ int Else(char else_c[MAX_COD], char labelelse[MAX_COD], char labelfim[MAX_COD]){
 int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
     char E1_c[MAX_COD],E2_c[MAX_COD],R_sc[MAX_COD],E1_p[MAX_COD],E2_p[MAX_COD],R_sp[MAX_COD];
 
-	//todo mudar para E1
     if (E1(E1_p, E1_c)){
         char op[10];
-        if (tk==TKMaior) strcpy(op,">");
+        if 		(tk==TKMaior) strcpy(op,">");
         else if (tk==TKMenor) strcpy(op,"<");
         else if (tk==TKIgual) strcpy(op,"=");
         else if (tk==TKDiferente) strcpy(op,"<>");
@@ -961,7 +964,6 @@ int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
 			case TKMenorIgual:
 		
 				getToken();
-				//todo mudar para E1
 				if (E1(E2_p, E2_c)){
 					sprintf(Rel_c,"%s%s\tif %s %s %s goto %s\n\tgoto %s\n",
 						E1_c,E2_c,E1_p,op,E2_p,Rel_true,Rel_false);
@@ -991,7 +993,7 @@ int E(char Com_c[MAX_COD]){
 
 //E1 -> E2 = E1 | E2 += E1 | E2 -= E1 | E2 *= E1 | E2 /= E1 | E2 %= E1 | E2
 int E1(char E1_p[MAX_COD],char E1_c[MAX_COD]){
-	char A1_p[MAX_COD],A1_c[MAX_COD];
+	char A1_p[MAX_COD],A1_c[MAX_COD], E1L1_hp[MAX_COD];
 
 	//todo mudar para E2
 	if(E11(E1_p, E1_c)){
@@ -1004,26 +1006,36 @@ int E1(char E1_p[MAX_COD],char E1_c[MAX_COD]){
 		}else if(tk == TKMaisIgual){// +=
 			getToken();
 			if(E1(A1_p, A1_c)){
+				geratemp(E1L1_hp);
+				sprintf(E1_c,"%s\t%s=%s+%s\n\t%s=%s\n", A1_c,E1L1_hp,E1_p,A1_p,E1_p,E1L1_hp);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
 		}else if(tk == TKMenosIgual){// -=
 			getToken();
 			if(E1(A1_p, A1_c)){
+				geratemp(E1L1_hp);
+				sprintf(E1_c,"%s\t%s=%s-%s\n\t%s=%s\n", A1_c,E1L1_hp,E1_p,A1_p,E1_p,E1L1_hp);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
 		}else if(tk == TKProdIgual){// *=
 			getToken();
 			if(E1(A1_p, A1_c)){
+				geratemp(E1L1_hp);
+				sprintf(E1_c,"%s\t%s=%s*%s\n\t%s=%s\n", A1_c,E1L1_hp,E1_p,A1_p,E1_p,E1L1_hp);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
 		}else if(tk == TKDivisaoIgual){// /=
 			getToken();
 			if(E1(A1_p, A1_c)){
+				geratemp(E1L1_hp);
+				sprintf(E1_c,"%s\t%s=%s/%s\n\t%s=%s\n", A1_c,E1L1_hp,E1_p,A1_p,E1_p,E1L1_hp);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
 		}else if(tk == TKRestoIgual){// %=
 			getToken();
 			if(E1(A1_p, A1_c)){
+				geratemp(E1L1_hp);
+				sprintf(E1_c,"%s\t%s=%s%%%s\n\t%s=%s\n", A1_c,E1L1_hp,E1_p,A1_p,E1_p,E1L1_hp);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
 		}else{return 1;}
@@ -1699,92 +1711,37 @@ int Com_Composto(char Comp_c[]){
 	else{return 0;}
 }
 
-int Com(char Geral_c[], char lbreak[]) {
-	char Com_c[MAX_COD],Com2_c[MAX_COD];
+int Com(char Com_c[], char lbreak[]) {
+	//char Com_c[MAX_COD],Com2_c[MAX_COD];
 
-    if (If(Com_c)){
-		if(Com(Com2_c, "")){
-			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
-			return 1;
-		}
-		else{return 0;}
-	}
-	else
-	if(DecGeral(Com_c)){
-		if(Com(Com2_c, "")){
-			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
-			return 1;
-		}
-		else{return 0;}
-	}
-	else if(While(Com_c, lbreak)){
-		if(Com(Com2_c, "")){
-			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
-			return 1;
-		}
-		else{return 0;}
-	}
-	else if(For(Com_c, lbreak)){
-		if(Com(Com2_c, "")){
-			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
-			return 1;
-		}
-		else{return 0;}
-	}
-	/*
-	//todo mudar para E1
-	else if(E(Com_c)){
-		if(tk==TKPontoEVirgula){
-			getToken();
-			if(Com(Com_c, "")){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKPontoEVirgula);}
-	}
-	*/
-	else if(Exp(Com_c)){
-		if(Com(Com2_c, "")){
-			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
-			return 1;
-		}
-		else{return 0;}
-	}
-	else if(Com_Composto(Com_c)){
-		if(Com(Com2_c, "")){
-			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
-			return 1;
-		}
-		else{return 0;}
-	}
+    if(If(Com_c)) return 1;
+	else if(DecGeral(Com_c)) return 1;
+	else if(While(Com_c, lbreak)) return 1;
+	else if(DoWhile(Com_c, lbreak)) return 1;
+	else if(For(Com_c, lbreak)) return 1;
+	else if(Exp(Com_c))	return 1;
+	else if(Com_Composto(Com_c)) return 1;
     /*
     else if(token==TK_Break){
         if(lbreak[0]=='\0'){printf("Break fora de iteração"); return 0;}
         sprintf("%s", lbreak); //todo ver como fazer
     }
     else if (tk==TK_id) return Com_Exp(Com_c);
-    
-    else if (tk==TK_pv){
-        token=le_token(); // comando vazio
-        strcpy(Com_c,"");
-        return 1;
-    }
 	*/
-    else{strcpy(Geral_c,"");return 1;}
+    else{strcpy(Com_c,"");return 1;}
 }
 
 int main(int argc, char *argv[]){
 	char Com_C[MAX_COD];
 
-	//IMPORTACAO ARQUIVO FONTE
+	// IMPORTACAO ARQUIVO FONTE
 	if((in = fopen("entrada.cpp", "r")) == NULL){
 		printf("Arquivo nao pode ser aberto!\n");
-		//exit(1);
+		exit(1);
 	}
 
 	// EXPORTACAO DOS DADOS LEXICOS
-	if((outLex = fopen("Saida.lex", "w")) == NULL) {
+	if((outLex = fopen("saida.lex", "w")) == NULL) {
 		printf("Arquivo nao pode ser criado\n");
 		exit(1);
 	}
@@ -1792,25 +1749,24 @@ int main(int argc, char *argv[]){
 	fprintf(outLex, "		   Token	   Lexema   Linha   Coluna\n");
 
 	// EXPORTACAO DO CODIGO C3E
-	if ((outC3E = fopen("saida.kvmp", "wt"))==NULL){
+	if((outC3E = fopen("saida.kvmp", "wt"))==NULL){
         printf("Erro na abertura do arquivo de saida");
-        exit(0);
+        exit(1);
     }
 
-	//INICIA ANALISE DO ARQUIVO
+	// INICIA ANALISE DO ARQUIVO
 	proxC();
 	getToken();
 	
-	if(Com(Com_C, "")){
-		fprintf(outC3E, "%s", Com_C);
-		printf("%s", Com_C);
-	}else{
-		printf("Erro no comando!!!\n");
-	}
+	// PERCORRE TODO O ARQUIVO
+	while(c!=EOF){
+        if(Com(Com_C, "") && !erro){
+			fprintf(outC3E, "%s", Com_C);
+			printf("%s", Com_C);
+		}
+    }
 
-	if(erro) printf("Erro no reconhecimento\n");
-	else 	 printf("Reconheceu OK!\n");
-	
+	if(!erro) printf("Reconheceu OK!\n");
 
 	fclose(in);
 	fclose(outLex);
