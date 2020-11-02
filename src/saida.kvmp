@@ -1,20 +1,23 @@
-	T000 = 0
-	a=T000
-	T001 = 1
-	b=T001
-	T002 = 0
-	i=T002
-LB000:
-	T003 = 10
-	if i < T003 goto LB001
-	goto LB002
-LB001:
-	T006=a+b
-	t=T006
-	a=b
-	b=t
-	T004 = 1
-	T005=i+T004
-	i=T005
+	T000 = 3
+	if e > T000 goto LB001
 	goto LB000
+LB001:
+	T001 = 2
+	a=T001
+	goto LB002
+LB000:
+	T002 = 1
+	if e < T002 goto LB004
+	goto LB003
+LB004:
+	T003 = 5
+	b=T003
+	goto LB005
+LB003:
+	T004 = 3
+	if teste = T004 goto LB007
+	goto LB006
+LB007:
+LB006:
+LB005:
 LB002:

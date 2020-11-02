@@ -1,12 +1,7 @@
-a=0;
-
-b=1;
-
-for (i=0;i<10;i=i+1){
-
-    t=a+b;
-
-    a=b;
-
-    b=t;
+if(e > 3){
+    a = 2;
+}else if(e < 1){
+    b = 5;
+}else{
+    if(teste == 3) teste = 10
 }

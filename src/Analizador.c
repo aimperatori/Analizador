@@ -520,10 +520,10 @@ int DecGeral(char DecGeral2_C[MAX_COD]){
 
 //DecGeral2 -> ( Parametro ) BlocoComando | Dec1
 int DecGeral2(char DecGeral2_C[MAX_COD]){
-	if(tk == TKAbreParenteses){// (
+	if(tk == TKAbreParenteses){ // (
 		getToken();
 		if (Parametro()){
-			if(tk == TKFechaParenteses){// )
+			if(tk == TKFechaParenteses){ // )
 				getToken();
 				if (BlocoComando(DecGeral2_C, "")){
 					return 1;
@@ -880,18 +880,29 @@ int CharConst(){
 	else{F_Printf_Erro(0);return 0;}
 }
 
-/*
+
 //If -> if ( E ) BlocoComando Else
-int If(){
+int If(char if_c[MAX_COD]){
+	char Rel_c[MAX_COD],Com1_c[MAX_COD],Else_c[MAX_COD];
+    char labelelse[10],labelthen[10],labelfim[10];
+
 	if(tk == TKIf){// if
+		geralabel(labelelse);
+		geralabel(labelthen);
+		geralabel(labelfim);
+
 		getToken();
 		if(tk == TKAbreParenteses){// (
 			getToken();
-			if(E()){
+			if(Rel(Rel_c, labelthen, labelelse)){
 				if(tk == TKFechaParenteses){// )
 					getToken();
-					if(BlocoComando()){
-						if(Else()){
+					if(Com(Com1_c, "")){
+						if(Else(Else_c, labelelse, labelfim)){
+
+							sprintf(if_c,"%s%s:\n%s%s",
+                                Rel_c,labelthen,Com1_c,Else_c);
+
 							return 1;
 						}
 						else{return 0;}
@@ -908,19 +919,23 @@ int If(){
 }
 
 //Else -> else If | else BlocoComando | ?
-int Else(){
-	if(tk == TKElse){// else
+int Else(char else_c[MAX_COD], char labelelse[MAX_COD], char labelfim[MAX_COD]){
+	char If_c[MAX_COD],Com_c[MAX_COD];
+
+	if(tk == TKElse){ // else
 		getToken();
-		if (If()){
+		if (If(If_c)){
+			sprintf(else_c,"\tgoto %s\n%s:\n%s%s:\n",labelfim, labelelse, If_c, labelfim);
 			return 1;
-		}else if (BlocoComando()){
+		}else if(Com(Com_c,"")){
+			sprintf(else_c,"\tgoto %s\n%s:\n%s%s:\n",labelfim, labelelse, Com_c, labelfim);
 			return 1;
 		}
 		else{return 0;}
 	}
-	else{return 0;}
+	else{sprintf(else_c,"%s:\n",labelelse);return 1;}
 }
-*/
+
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> INICIO EXPRESSOES <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -1686,13 +1701,15 @@ int Com_Composto(char Comp_c[]){
 
 int Com(char Geral_c[], char lbreak[]) {
 	char Com_c[MAX_COD],Com2_c[MAX_COD];
-    /*if (If(Com_c, lbreak)){
-		if(Com(Com_c, "")){
+
+    if (If(Com_c)){
+		if(Com(Com2_c, "")){
+			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
 			return 1;
 		}
 		else{return 0;}
 	}
-	else*/ 
+	else
 	if(DecGeral(Com_c)){
 		if(Com(Com2_c, "")){
 			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
