@@ -707,8 +707,7 @@ int For(char for_c[], char lbreak[]){
 								if(tk == TKFechaParenteses){// )
 									getToken();
 									if (Com(Com_c, labelfim)){
-										//gera codigo for
-										sprintf(for_c,"%s%s:\n%s%s:\n%s%s\tgoto %s\n%s\n",
+										sprintf(for_c,"%s%s:\n%s%s:\n%s%s\tgoto %s\n%s:\n",
 														Rel1_c,labelini,Rel2_c,labeltrue,Com_c,Rel3_c,labelini,labelfim);
 										return 1;
 									}
@@ -929,7 +928,7 @@ int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
     char E1_c[MAX_COD],E2_c[MAX_COD],R_sc[MAX_COD],E1_p[MAX_COD],E2_p[MAX_COD],R_sp[MAX_COD];
 
 	//todo mudar para E1
-    if (E11(E1_p, E1_c)){
+    if (E1(E1_p, E1_c)){
         char op[10];
         if (tk==TKMaior) strcpy(op,">");
         else if (tk==TKMenor) strcpy(op,"<");
@@ -938,7 +937,6 @@ int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
         else if (tk==TKMaiorIgual) strcpy(op,">=");
         else if (tk==TKMenorIgual) strcpy(op,"<=");
 
-        //if (tk==TKMaior||tk==TKMenor||tk==TKIgual||tk==TKDiferente||tk==TKMaiorIgual||tk==TKMenorIgual){
 		switch (tk){
 			case TKMaior:
 			case TKMenor:
@@ -949,7 +947,7 @@ int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
 		
 				getToken();
 				//todo mudar para E1
-				if (E11(E2_p,E2_c)){
+				if (E1(E2_p, E2_c)){
 					sprintf(Rel_c,"%s%s\tif %s %s %s goto %s\n\tgoto %s\n",
 						E1_c,E2_c,E1_p,op,E2_p,Rel_true,Rel_false);
 					return 1;
@@ -959,7 +957,6 @@ int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
         default:
             strcpy(Rel_c, E1_c);
             return 1;
-			break;
         }
     }
     return 0;
@@ -971,7 +968,7 @@ int E(char Com_c[MAX_COD]){
 
 	//todo: chamar E1
 	if(E1(E_p, E_c)){
-		sprintf(Com_c, "%s%s", Com_c,E_c);
+		sprintf(Com_c, "%s", E_c);
 		return 1;
 	}
 	else{return 0;}
@@ -1478,9 +1475,8 @@ int E13(char E13_p[MAX_COD], char E13_c[MAX_COD]){
 //E14 -> id | id ++ | id -- | id ( CallFuncParam ) | inteiro | flutuante | ( E )
 int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 	if(tk == TKId){// id
-		//strcpy(E14_c, "");
+		strcpy(E14_c, "");
         strcpy(E14_p, lex);
-		sprintf(E14_c,"\t%s\n", E14_p);
 		getToken();
 		if(tk == TKDuploMais){// ++
 			getToken();
@@ -1658,6 +1654,20 @@ int G(char G_c[], char lbreak[]){
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NOVO COMANDO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+int Exp(char Exp_c[MAX_COD]){
+    //char id[10];
+    char E_c[MAX_COD];
+	
+    if (E(E_c)){
+        if (tk==TKPontoEVirgula){
+            getToken();
+            sprintf(Exp_c, "%s", E_c);
+            return 1;
+        }
+		else{F_Printf_Erro(TKPontoEVirgula);return 0;}
+    }
+}
+
 int Com_Composto(char Comp_c[]){
     char Com_C[MAX_COD];
 
@@ -1674,7 +1684,8 @@ int Com_Composto(char Comp_c[]){
 	else{return 0;}
 }
 
-int Com(char Com_c[], char lbreak[]) {
+int Com(char Geral_c[], char lbreak[]) {
+	char Com_c[MAX_COD],Com2_c[MAX_COD];
     /*if (If(Com_c, lbreak)){
 		if(Com(Com_c, "")){
 			return 1;
@@ -1683,23 +1694,27 @@ int Com(char Com_c[], char lbreak[]) {
 	}
 	else*/ 
 	if(DecGeral(Com_c)){
-		if(G(Com_c, "")){
+		if(Com(Com2_c, "")){
+			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
 			return 1;
 		}
 		else{return 0;}
 	}
 	else if(While(Com_c, lbreak)){
-		if(Com(Com_c, "")){
+		if(Com(Com2_c, "")){
+			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
 			return 1;
 		}
 		else{return 0;}
 	}
 	else if(For(Com_c, lbreak)){
-		if(Com(Com_c, "")){
+		if(Com(Com2_c, "")){
+			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
 			return 1;
 		}
 		else{return 0;}
 	}
+	/*
 	//todo mudar para E1
 	else if(E(Com_c)){
 		if(tk==TKPontoEVirgula){
@@ -1711,8 +1726,17 @@ int Com(char Com_c[], char lbreak[]) {
 		}
 		else{F_Printf_Erro(TKPontoEVirgula);}
 	}
+	*/
+	else if(Exp(Com_c)){
+		if(Com(Com2_c, "")){
+			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
+			return 1;
+		}
+		else{return 0;}
+	}
 	else if(Com_Composto(Com_c)){
-		if(Com(Com_c, "")){
+		if(Com(Com2_c, "")){
+			sprintf(Geral_c,"%s%s",Com_c,Com2_c);
 			return 1;
 		}
 		else{return 0;}
@@ -1730,7 +1754,7 @@ int Com(char Com_c[], char lbreak[]) {
         return 1;
     }
 	*/
-    else return 1;
+    else{strcpy(Geral_c,"");return 1;}
 }
 
 int main(int argc, char *argv[]){
