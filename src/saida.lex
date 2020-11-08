@@ -1,5 +1,11 @@
 		   Token	   Lexema   Linha   Coluna
                     TKId                a       1        2
-            TKRestoIgual                %       1        5
-               TKInteiro                2       1        7
-         TKPontoEVirgula                ;       1        8
+         TKAbreColchetes                [       1        3
+               TKInteiro                1       1        4
+         TKFechaColchetes               ]       1        5
+         TKAbreColchetes                [       1        6
+               TKInteiro                3       1        7
+         TKFechaColchetes               ]       1        8
+                 TKAtrib                =       1       10
+                    TKId                b       1       12
+         TKPontoEVirgula                ;       1       13

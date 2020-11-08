@@ -69,6 +69,8 @@
 #define TKAsm 69
 #define PARAMETRO 70
 #define TKFlutuante 71
+#define	TKAbreColchetes 72
+#define TKFechaColchetes 73
 
 #define false 0
 #define true 1
@@ -96,7 +98,7 @@ char lista[][30] = {"", "TKId ", "TKVoid ", "TKInt ",
 		"TKNegacao ", "TKContinue ", "TKElse ", "TKAuto ", "TKEnum ",
 		"TKConst ", "TKExtern ", "TKGoto ", "TKRegister ", "TKSigned ",
 		"TKSizeof ", "TKStatic ", "TKTypedef ", "TKUnsigned ", "TKVolatile ",
-		"TKAsm ", "PARAMETRO ", "TKFlutuante " };
+		"TKAsm ", "PARAMETRO ", "TKFlutuante ", "TKAbreColchetes ", "TKFechaColchetes" };
 
 char c;
 FILE *in, *outLex, *outC3E;
@@ -286,6 +288,8 @@ void getToken() {
 					if (c==')'){lex[posl]='\0';proxC();col++;tk=TKFechaParenteses;return;}
 					if (c=='{'){lex[posl]='\0';proxC();col++;tk=TKAbreChaves;return;}
 					if (c=='}'){lex[posl]='\0';proxC();col++;tk=TKFechaChaves;return;}
+					if (c=='['){lex[posl]='\0';proxC();col++;tk=TKAbreColchetes;return;}
+					if (c==']'){lex[posl]='\0';proxC();col++;tk=TKFechaColchetes;return;}
 					if (c==','){lex[posl]='\0';proxC();col++;tk=TKVirgula;return;}
 					if (c==';'){lex[posl]='\0';proxC();col++;tk=TKPontoEVirgula;return;}
 					if (c==':'){lex[posl]='\0';proxC();col++;tk=TKDoisPontos;return;}
@@ -395,6 +399,8 @@ void F_Printf_Erro(int x){
 		case TKFlutuante:		strcpy(string,"um numero"); break;
 		case TKExpressao:		strcpy(string,"uma expressao"); break;
 		case PARAMETRO:			strcpy(string,"um parametro"); break;
+		case TKAbreColchetes:	strcpy(string,"abrir colchetes"); break;
+		case TKFechaColchetes:	strcpy(string,"fechar colchetes"); break;
 
 		default: x=0;
 	}
@@ -993,52 +999,61 @@ int E(char Com_c[MAX_COD]){
 
 //E1 -> E2 = E1 | E2 += E1 | E2 -= E1 | E2 *= E1 | E2 /= E1 | E2 %= E1 | E2
 int E1(char E1_p[MAX_COD],char E1_c[MAX_COD]){
-	char A1_p[MAX_COD],A1_c[MAX_COD], E1L1_hp[MAX_COD];
+	char A1_p[MAX_COD],A1_c[MAX_COD],E1L_c[MAX_COD],E1L_p[MAX_COD],E1L1_hp[MAX_COD];
 
 	//todo mudar para E2
-	if(E11(E1_p, E1_c)){
+	if(E11(E1L_p, E1L_c)){
 		if(tk == TKAtrib){// =
 			getToken();
 			if(E1(A1_p, A1_c)){
-				sprintf(E1_c,"%s\t%s=%s\n",A1_c,E1_p,A1_p);
+				sprintf(E1_c,"%s%s\t%s = %s\n",A1_c,E1L_c,E1L_p,A1_p);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
 		}else if(tk == TKMaisIgual){// +=
 			getToken();
 			if(E1(A1_p, A1_c)){
 				geratemp(E1L1_hp);
-				sprintf(E1_c,"%s\t%s=%s+%s\n\t%s=%s\n", A1_c,E1L1_hp,E1_p,A1_p,E1_p,E1L1_hp);
+				sprintf(E1_c,"%s%s\t%s = %s+%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
 		}else if(tk == TKMenosIgual){// -=
 			getToken();
 			if(E1(A1_p, A1_c)){
 				geratemp(E1L1_hp);
-				sprintf(E1_c,"%s\t%s=%s-%s\n\t%s=%s\n", A1_c,E1L1_hp,E1_p,A1_p,E1_p,E1L1_hp);
+				sprintf(E1_c,"%s%s\t%s = %s-%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
 		}else if(tk == TKProdIgual){// *=
 			getToken();
 			if(E1(A1_p, A1_c)){
 				geratemp(E1L1_hp);
-				sprintf(E1_c,"%s\t%s=%s*%s\n\t%s=%s\n", A1_c,E1L1_hp,E1_p,A1_p,E1_p,E1L1_hp);
+				sprintf(E1_c,"%s%s\t%s = %s*%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
 		}else if(tk == TKDivisaoIgual){// /=
 			getToken();
 			if(E1(A1_p, A1_c)){
 				geratemp(E1L1_hp);
-				sprintf(E1_c,"%s\t%s=%s/%s\n\t%s=%s\n", A1_c,E1L1_hp,E1_p,A1_p,E1_p,E1L1_hp);
+				sprintf(E1_c,"%s%s\t%s = %s/%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
 		}else if(tk == TKRestoIgual){// %=
 			getToken();
 			if(E1(A1_p, A1_c)){
 				geratemp(E1L1_hp);
-				sprintf(E1_c,"%s\t%s=%s%%%s\n\t%s=%s\n", A1_c,E1L1_hp,E1_p,A1_p,E1_p,E1L1_hp);
+				sprintf(E1_c,"%s%s\t%s = %s%%%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
-		}else{return 1;}
+		}else{
+			strcpy(E1_p,E1L_p);
+			strcpy(E1_c,E1L_c);
+			return 1;}
 	}
 	else{return 0;}
 }
@@ -1501,6 +1516,8 @@ int E13(char E13_p[MAX_COD], char E13_c[MAX_COD]){
 
 //E14 -> id | id ++ | id -- | id ( CallFuncParam ) | inteiro | flutuante | ( E )
 int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
+	char E14L_c[MAX_COD],E14L_p[MAX_COD];
+
 	if(tk == TKId){// id
 		strcpy(E14_c, "");
         strcpy(E14_p, lex);
@@ -1508,10 +1525,12 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 		if(tk == TKDuploMais){// ++
 			getToken();
 			return 1;
-		}else if(tk == TKDuploMenos){// --
+		}
+		else if(tk == TKDuploMenos){// --
 			getToken();
 			return 1;
-		}else if(tk == TKAbreParenteses){// (
+		}
+		else if(tk == TKAbreParenteses){// (
 			getToken();
 			/*
 			if(CallFuncParam()){
@@ -1522,9 +1541,52 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 				else{F_Printf_Erro(TKFechaParenteses);return 0;}
 			}
 			else{return 0;}*/
-		}else{
-			return 1;
 		}
+		else if(tk == TKAbreColchetes){			
+			getToken();
+			if (E1(E14L_p, E14L_c)){
+				if(tk == TKFechaColchetes){
+					getToken();
+					// Bidimencional
+					if(tk == TKAbreColchetes){
+						char E14L2_c[MAX_COD],E14L2_p[MAX_COD];
+						getToken();
+						if (E1(E14L2_p, E14L2_c)){
+							if(tk == TKFechaColchetes){
+								getToken();
+								//todo setar qtd de colunas da matriz
+								//todo setar o sizeof da variavel
+								char QTD_COL[10],TAM_TYPE[10];
+								char E14_2p[10],E14_3p[10],E14_4p[10];
+								strcpy(QTD_COL, "10");
+								strcpy(TAM_TYPE, "4");
+								geratemp(E14_2p);
+								geratemp(E14_3p);
+								geratemp(E14_4p);
+
+								sprintf(E14_c,"%s\t%s=%s*%s\n%s\t%s=%s+%s\n\t%s=%s*%s\n",
+									E14L_c,E14_2p,E14L_p,QTD_COL,
+									E14L2_c,E14_3p,E14_2p,E14L2_p,
+									E14_4p,E14_3p,TAM_TYPE);
+								sprintf(E14_p,"%s[%s]",E14_p,E14_4p);
+								return 1;
+							}
+							else{F_Printf_Erro(TKFechaColchetes);return 0;}
+						}
+						else{F_Printf_Erro(TKExpressao);return 0;}
+					}
+					else{
+						// Unidimencional
+						strcpy(E14_c,E14L_c);
+						sprintf(E14_p,"%s[%s]",E14_p,E14L_p);
+						return 1;
+					}
+				}
+				else{F_Printf_Erro(TKFechaColchetes);return 0;}
+			}
+			else{F_Printf_Erro(TKExpressao);return 0;}
+		}
+		else{return 1;}
 	}
 	else if(tk == TKInteiro){// INTEIRO
 		geratemp(E14_p);
@@ -1541,14 +1603,14 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 		return 1;
 	}
 	else if(tk == TKAbreParenteses){// (
-		char E14_c[MAX_COD],E14_p[MAX_COD];
+		//char E14L_c[MAX_COD],E14L_p[MAX_COD];
 		getToken();
 		//todo: mudar pro E1
-		if (E11(E14_p, E14_c)){
+		if (E11(E14L_p, E14L_c)){
 			if(tk == TKFechaParenteses){// )
 				getToken();
-				strcpy(E14_c,E14_c);
-                strcpy(E14_p,E14_p);
+				strcpy(E14_c,E14L_c);
+                strcpy(E14_p,E14L_p);
 				return 1;
 			}
 			else{F_Printf_Erro(TKFechaParenteses);return 0;}
