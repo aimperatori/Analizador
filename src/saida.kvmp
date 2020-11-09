@@ -1,0 +1,15 @@
+LB000:
+	T000 = 3
+	a = T000
+	T001 = 6
+	if a = T001 goto LB003
+	goto LB002
+LB003:
+	goto LB000
+LB002:
+	T002 = 2
+	b = T002
+	T003 = 5
+	if a < T003 goto LB000
+	goto LB001
+LB001:

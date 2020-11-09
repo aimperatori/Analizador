@@ -323,7 +323,7 @@ void getToken() {
 
 #define MAX_COD 1000
 
-int G(char Com_c[], char lbreak[]);
+//int G(char Com_c[], char lbreak[]);
 int E();
 int DecGeral(char[]);
 int DecGeral2();
@@ -332,10 +332,11 @@ int Dec2();
 int Declarator();
 int CallFuncParam();
 int CallFuncParam2();
-int While(char Com_c[], char lbreak[]);
-int If();
-int Else();
-int For();
+int While(char[], char[],char[]);
+int DoWhile(char[], char[],char[]);
+int For(char[],char[],char[]);
+int If(char[],char[],char[]);
+int Else(char[],char[],char[],char[],char[]);
 int EV();
 int SwitchCase();
 int Cases();
@@ -346,7 +347,7 @@ int Parametro();
 int Parametro2();
 int Parametro2Linha();
 int BlocoComando();
-int Rel(char Rel_c[], char Rel_true[], char Rel_false[]);
+int Rel(char[], char[], char[]);
 int E();
 int E1();
 int E2();
@@ -373,10 +374,10 @@ int E12Linha();
 int E13();
 int E14(char[], char[]);
 int Return();
-void geralabel(char label[]);
-void geratemp(char temp[]);
-int Com_Composto(char [],char []);
-int Com(char Com_c[], char lbreak[]);
+void geralabel(char[]);
+void geratemp(char[]);
+int Com_Composto(char [],char [],char []);
+int Com(char[],char[],char[]);
 
 void F_Printf_Erro(int x){
 	erro = true;
@@ -402,11 +403,12 @@ void F_Printf_Erro(int x){
 		case TKAbreColchetes:	strcpy(string,"abrir colchetes"); break;
 		case TKFechaColchetes:	strcpy(string,"fechar colchetes"); break;
 		case TKBreak:			strcpy(string,"\"break\" fora de iteracao"); break;
+		case TKContinue:		strcpy(string,"\"continue\" fora de iteracao"); break;
 
 		default: x=0;
 	}
 
-	if(x==TKBreak) printf("Erro: %s, linha %d coluna %d\n", string, lin, col-posl);
+	if(x==TKBreak || x==TKContinue) printf("Erro: %s, linha %d coluna %d\n", string, lin, col-posl);
 	else if(x) printf("Erro: esperava %s, linha %d coluna %d\n", string, lin, col-posl);
 	else  printf("Erro: nao identificado linha %d coluna %d\n", lin, col-posl);
 }
@@ -629,7 +631,7 @@ int CallFuncParam2(){
 */
 
 //While -> while ( E ) Com
-int While(char while_c[], char lbreak[]){
+int While(char while_c[], char lbreak[], char lcontinue[]){
 	char Rel_c[MAX_COD],Rel_p[MAX_COD],Com_c[MAX_COD];
     char labelwhile[10],labeltrue[10],labelfim[10];
 
@@ -643,7 +645,7 @@ int While(char while_c[], char lbreak[]){
 			if (Rel(Rel_c,labeltrue,labelfim)){
 				if (tk == TKFechaParenteses){
 					getToken();
-					if(Com(Com_c, labelfim)){
+					if(Com(Com_c, labelfim, labelwhile)){
 						sprintf(while_c,"%s:%s%s:\n%s\tgoto %s\n%s:\n",
                                 		labelwhile,Rel_c,labeltrue,Com_c,labelwhile,labelfim);
 						return 1;
@@ -659,7 +661,7 @@ int While(char while_c[], char lbreak[]){
 }
 
 //DoWhile -> do Com while ( Rel ) ;
-int DoWhile(char dowhile_c[], char lbreak[]){
+int DoWhile(char dowhile_c[], char lbreak[], char lcontinue[]){
 	char Rel_c[MAX_COD],Rel_p[MAX_COD],Com_c[MAX_COD];
     char labeltrue[10],labelfim[10];
 
@@ -667,7 +669,7 @@ int DoWhile(char dowhile_c[], char lbreak[]){
 		geralabel(labeltrue);
 		geralabel(labelfim);
 		getToken();
-		if(Com(Com_c, labelfim)){
+		if(Com(Com_c, labelfim, labeltrue)){
 			if(tk == TKWhile){// while
 				getToken();
 				if(tk == TKAbreParenteses){// (
@@ -697,14 +699,15 @@ int DoWhile(char dowhile_c[], char lbreak[]){
 }
 
 //For -> for ( EV ; EV ; EV ) Com
-int For(char for_c[], char lbreak[]){
+int For(char for_c[], char lbreak[], char lcontinue[]){
 	char Rel1_c[MAX_COD],Rel1_p[MAX_COD],Rel2_c[MAX_COD],Rel2_p[MAX_COD],Rel3_c[MAX_COD],Rel3_p[MAX_COD],Com_c[MAX_COD];
-    char labelini[10],labeltrue[10],labelfim[10];
+    char labelini[10],labeltrue[10],labelfim[10],labelinc[10];
 
 	if(tk == TKFor){// for
 		geralabel(labelini);
 		geralabel(labeltrue);
 		geralabel(labelfim);
+		geralabel(labelinc);
 
 		getToken();
 		if(tk == TKAbreParenteses){// (
@@ -718,9 +721,9 @@ int For(char for_c[], char lbreak[]){
 							if (Rel(Rel3_c, "", "")){
 								if(tk == TKFechaParenteses){// )
 									getToken();
-									if (Com(Com_c, labelfim)){
-										sprintf(for_c,"%s%s:\n%s%s:\n%s%s\tgoto %s\n%s:\n",
-														Rel1_c,labelini,Rel2_c,labeltrue,Com_c,Rel3_c,labelini,labelfim);
+									if (Com(Com_c, labelfim, labelinc)){
+										sprintf(for_c,"%s%s:\n%s%s:\n%s%s:\n%s\tgoto %s\n%s:\n",
+														Rel1_c,labelini,Rel2_c,labeltrue,Com_c,labelinc,Rel3_c,labelini,labelfim);
 										return 1;
 									}
 									else{return 0;}
@@ -891,7 +894,7 @@ int CharConst(){
 */
 
 //If -> if ( E ) Com Else
-int If(char if_c[MAX_COD]){
+int If(char if_c[MAX_COD], char lbreak[], char lcontinue[]){
 	char Rel_c[MAX_COD],Com1_c[MAX_COD],Else_c[MAX_COD];
     char labelelse[10],labelthen[10],labelfim[10];
 
@@ -906,8 +909,8 @@ int If(char if_c[MAX_COD]){
 			if(Rel(Rel_c, labelthen, labelelse)){
 				if(tk == TKFechaParenteses){// )
 					getToken();
-					if(Com(Com1_c, "")){
-						if(Else(Else_c, labelelse, labelfim)){
+					if(Com(Com1_c, lbreak, lcontinue)){
+						if(Else(Else_c, lbreak, lcontinue, labelelse, labelfim)){
 
 							sprintf(if_c,"%s%s:\n%s%s",
                                 Rel_c,labelthen,Com1_c,Else_c);
@@ -928,15 +931,15 @@ int If(char if_c[MAX_COD]){
 }
 
 //Else -> else If | else Com | ?
-int Else(char else_c[MAX_COD], char labelelse[MAX_COD], char labelfim[MAX_COD]){
+int Else(char else_c[MAX_COD], char lbreak[], char lcontinue[], char labelelse[MAX_COD], char labelfim[MAX_COD]){
 	char If_c[MAX_COD],Com_c[MAX_COD];
 
 	if(tk == TKElse){ // else
 		getToken();
-		if (If(If_c)){
+		if (If(If_c, lbreak, lcontinue)){
 			sprintf(else_c,"\tgoto %s\n%s:\n%s%s:\n",labelfim, labelelse, If_c, labelfim);
 			return 1;
-		}else if(Com(Com_c,"")){
+		}else if(Com(Com_c, lbreak, lcontinue)){
 			sprintf(else_c,"\tgoto %s\n%s:\n%s%s:\n",labelfim, labelelse, Com_c, labelfim);
 			return 1;
 		}
@@ -1637,9 +1640,11 @@ int BlocoComando(char Com_C[], char lbreak[]){
 		else{return 0;}
 		*/
 	}
+	/*
 	else if(While(Com_C, lbreak)){
 		return 1;
 	}
+	*/
 	//else if(DoWhile()){
 	//	return 1;
 	//}
@@ -1759,7 +1764,22 @@ int Break(char Break_c[MAX_COD], char lbreak[]){
 		}
 		else{F_Printf_Erro(TKPontoEVirgula);return 0;}
     }
-	else{return 1;}
+	else return 0;
+}
+
+int Continue(char Continue_c[MAX_COD], char lcontinue[]){
+	if(tk==TKContinue){
+		getToken();
+		if(tk == TKPontoEVirgula){// ;
+			getToken();
+        	if(lcontinue[0]=='\0'){F_Printf_Erro(TKContinue);return 0;}
+
+        	sprintf(Continue_c,"\tgoto %s\n",lcontinue);
+			return 1;
+		}
+		else{F_Printf_Erro(TKPontoEVirgula);return 0;}
+    }
+	else return 0;
 }
 
 int Exp(char Exp_c[MAX_COD]){
@@ -1776,14 +1796,14 @@ int Exp(char Exp_c[MAX_COD]){
     }
 }
 
-int Com_Composto(char Comp_c[], char lbreak[]){
+int Com_Composto(char Comp_c[], char lbreak[], char lcontinue[]){
     char Com_C[MAX_COD];
 
 	if(tk==TKAbreChaves){
 		getToken();
 		strcpy(Comp_c,"");
 		while (tk!=TKFechaChaves){
-			if(!Com(Com_C, lbreak)) return 0;
+			if(!Com(Com_C, lbreak, lcontinue)) return 0;
 			strcat(Comp_c,Com_C);
 		}
 		getToken();
@@ -1792,16 +1812,17 @@ int Com_Composto(char Comp_c[], char lbreak[]){
 	else{return 0;}
 }
 
-int Com(char Com_c[], char lbreak[]) {
+int Com(char Com_c[], char lbreak[], char lcontinue[]) {
 
-    if(If(Com_c)) return 1;
+    if(If(Com_c, lbreak, lcontinue)) return 1;
 	else if(DecGeral(Com_c)) return 1;
-	else if(While(Com_c, lbreak)) return 1;
-	else if(DoWhile(Com_c, lbreak)) return 1;
-	else if(For(Com_c, lbreak)) return 1;
+	else if(While(Com_c, lbreak, lcontinue)) return 1;
+	else if(DoWhile(Com_c, lbreak, lcontinue)) return 1;
+	else if(For(Com_c, lbreak, lcontinue)) return 1;
 	else if(Exp(Com_c))	return 1;
-	else if(Com_Composto(Com_c, lbreak)) return 1;
     else if(Break(Com_c, lbreak)) return 1;
+	else if(Continue(Com_c, lcontinue)) return 1;
+	else if(Com_Composto(Com_c, lbreak, lcontinue)) return 1;
     //else if (tk==TK_id) return Com_Exp(Com_c);
 	
     else{strcpy(Com_c,"");return 1;}
@@ -1836,7 +1857,7 @@ int main(int argc, char *argv[]){
 	
 	// PERCORRE TODO O ARQUIVO
 	while(c!=EOF && !erro){
-        if(Com(Com_C, "") && !erro){
+        if(Com(Com_C, "", "") && !erro){
 			fprintf(outC3E, "%s", Com_C);
 			printf("%s", Com_C);
 		}
