@@ -375,7 +375,7 @@ int E14(char[], char[]);
 int Return();
 void geralabel(char label[]);
 void geratemp(char temp[]);
-int Com_Composto(char Comp_c[]);
+int Com_Composto(char [],char []);
 int Com(char Com_c[], char lbreak[]);
 
 void F_Printf_Erro(int x){
@@ -401,11 +401,13 @@ void F_Printf_Erro(int x){
 		case PARAMETRO:			strcpy(string,"um parametro"); break;
 		case TKAbreColchetes:	strcpy(string,"abrir colchetes"); break;
 		case TKFechaColchetes:	strcpy(string,"fechar colchetes"); break;
+		case TKBreak:			strcpy(string,"\"break\" fora de iteracao"); break;
 
 		default: x=0;
 	}
 
-	if(x) printf("Erro: esperava %s, linha %d coluna %d\n", string, lin, col-posl);
+	if(x==TKBreak) printf("Erro: %s, linha %d coluna %d\n", string, lin, col-posl);
+	else if(x) printf("Erro: esperava %s, linha %d coluna %d\n", string, lin, col-posl);
 	else  printf("Erro: nao identificado linha %d coluna %d\n", lin, col-posl);
 }
 
@@ -626,7 +628,7 @@ int CallFuncParam2(){
 }
 */
 
-//While -> while ( E ) BlocoComando
+//While -> while ( E ) Com
 int While(char while_c[], char lbreak[]){
 	char Rel_c[MAX_COD],Rel_p[MAX_COD],Com_c[MAX_COD];
     char labelwhile[10],labeltrue[10],labelfim[10];
@@ -641,7 +643,7 @@ int While(char while_c[], char lbreak[]){
 			if (Rel(Rel_c,labeltrue,labelfim)){
 				if (tk == TKFechaParenteses){
 					getToken();
-					if(Com(Com_c, "")){
+					if(Com(Com_c, labelfim)){
 						sprintf(while_c,"%s:%s%s:\n%s\tgoto %s\n%s:\n",
                                 		labelwhile,Rel_c,labeltrue,Com_c,labelwhile,labelfim);
 						return 1;
@@ -665,7 +667,7 @@ int DoWhile(char dowhile_c[], char lbreak[]){
 		geralabel(labeltrue);
 		geralabel(labelfim);
 		getToken();
-		if(Com(Com_c, "")){
+		if(Com(Com_c, labelfim)){
 			if(tk == TKWhile){// while
 				getToken();
 				if(tk == TKAbreParenteses){// (
@@ -694,7 +696,7 @@ int DoWhile(char dowhile_c[], char lbreak[]){
 	else{return 0;}
 }
 
-//For -> for ( EV ; EV ; EV ) BlocoComando
+//For -> for ( EV ; EV ; EV ) Com
 int For(char for_c[], char lbreak[]){
 	char Rel1_c[MAX_COD],Rel1_p[MAX_COD],Rel2_c[MAX_COD],Rel2_p[MAX_COD],Rel3_c[MAX_COD],Rel3_p[MAX_COD],Com_c[MAX_COD];
     char labelini[10],labeltrue[10],labelfim[10];
@@ -814,7 +816,6 @@ int Cases(){
 	}
 	else{return 1;}
 }
-*/
 
 //BlocoCases -> case CharConst : G BlocoCases | default : G | ?
 int BlocoCases(char Cases_c[], char lbreak[]){
@@ -849,7 +850,6 @@ int BlocoCases(char Cases_c[], char lbreak[]){
 	else{return 1;}
 }
 
-/*
 //Case1 -> If | For | Switch | DoWhile | While | E | ?
 int Case1(char Case_c[], char lbreak[]){
 	if (If()){
@@ -875,7 +875,6 @@ int Case1(char Case_c[], char lbreak[]){
 	}
 	else{return 1;}
 }
-*/
 
 //CharConst -> char | constante
 int CharConst(){
@@ -889,9 +888,9 @@ int CharConst(){
 	}
 	else{F_Printf_Erro(0);return 0;}
 }
+*/
 
-
-//If -> if ( E ) BlocoComando Else
+//If -> if ( E ) Com Else
 int If(char if_c[MAX_COD]){
 	char Rel_c[MAX_COD],Com1_c[MAX_COD],Else_c[MAX_COD];
     char labelelse[10],labelthen[10],labelfim[10];
@@ -928,7 +927,7 @@ int If(char if_c[MAX_COD]){
 	else{return 0;}
 }
 
-//Else -> else If | else BlocoComando | ?
+//Else -> else If | else Com | ?
 int Else(char else_c[MAX_COD], char labelelse[MAX_COD], char labelfim[MAX_COD]){
 	char If_c[MAX_COD],Com_c[MAX_COD];
 
@@ -1378,7 +1377,7 @@ int E11Linha(char E11L_hp[MAX_COD], char E11L_sp[MAX_COD], char E11L_hc[MAX_COD]
 		if(E12(E12_p, E12_c)){
 
 			geratemp(E11L1_hp);
-            sprintf(E11L1_hc,"%s%s\t%s=%s+%s\n", E11L_hc, E12_c, E11L1_hp, E11L_hp, E12_p);
+            sprintf(E11L1_hc,"%s%s\t%s = %s+%s\n", E11L_hc, E12_c, E11L1_hp, E11L_hp, E12_p);
 
 			if(E11Linha(E11L1_hp, E11L1_sp, E11L1_hc, E11L1_sc)){
 				strcpy(E11L_sp, E11L1_sp);
@@ -1393,7 +1392,7 @@ int E11Linha(char E11L_hp[MAX_COD], char E11L_sp[MAX_COD], char E11L_hc[MAX_COD]
 		getToken();
 		if(E12(E12_p, E12_c)){
 			geratemp(E11L1_hp);
-            sprintf(E11L1_hc,"%s%s\t%s=%s-%s\n", E11L_hc, E12_c, E11L1_hp, E11L_hp, E12_p);
+            sprintf(E11L1_hc,"%s%s\t%s = %s-%s\n", E11L_hc, E12_c, E11L1_hp, E11L_hp, E12_p);
 			if(E11Linha(E11L1_hp, E11L1_sp, E11L1_hc, E11L1_sc)){
 				strcpy(E11L_sp, E11L1_sp);
                 strcpy(E11L_sc, E11L1_sc);
@@ -1436,7 +1435,7 @@ int E12Linha(char E12L_hp[MAX_COD], char E12L_sp[MAX_COD], char E12L_hc[MAX_COD]
 		if(E13(E13_p, E13_c)){
 			
 			geratemp(E12L1_hp);
-            sprintf(E12L1_hc,"%s%s\t%s=%s*%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
+            sprintf(E12L1_hc,"%s%s\t%s = %s*%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
 
 			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc)){
 				strcpy(E12L_sp,E12L1_sp);
@@ -1452,7 +1451,7 @@ int E12Linha(char E12L_hp[MAX_COD], char E12L_sp[MAX_COD], char E12L_hc[MAX_COD]
 		if(E13(E13_p, E13_c)){
 			
 			geratemp(E12L1_hp);
-            sprintf(E12L1_hc,"%s%s\t%s=%s/%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
+            sprintf(E12L1_hc,"%s%s\t%s = %s/%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
 
 			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc)){
 				strcpy(E12L_sp,E12L1_sp);
@@ -1468,7 +1467,7 @@ int E12Linha(char E12L_hp[MAX_COD], char E12L_sp[MAX_COD], char E12L_hc[MAX_COD]
 		if(E13(E13_p, E13_c)){
 			
 			geratemp(E12L1_hp);
-            sprintf(E12L1_hc,"%s%s\t%s=%s%%%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
+            sprintf(E12L1_hc,"%s%s\t%s = %s%%%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
 
 			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc)){
 				strcpy(E12L_sp,E12L1_sp);
@@ -1564,7 +1563,7 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 								geratemp(E14_3p);
 								geratemp(E14_4p);
 
-								sprintf(E14_c,"%s\t%s=%s*%s\n%s\t%s=%s+%s\n\t%s=%s*%s\n",
+								sprintf(E14_c,"%s\t%s = %s*%s\n%s\t%s = %s+%s\n\t%s = %s*%s\n",
 									E14L_c,E14_2p,E14L_p,QTD_COL,
 									E14L2_c,E14_3p,E14_2p,E14L2_p,
 									E14_4p,E14_3p,TAM_TYPE);
@@ -1623,10 +1622,10 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> FIM EXPRESSOES <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
 //BlocoComando -> { G } | While | DoWhile | DecGeral | If | For | SwitchCase | break | E | ?
 int BlocoComando(char Com_C[], char lbreak[]){
 	if(tk == TKAbreChaves){// {
+		/*
 		getToken();
 		if(G(Com_C, lbreak)){
 			if(tk == TKFechaChaves){// }
@@ -1636,6 +1635,7 @@ int BlocoComando(char Com_C[], char lbreak[]){
 			else{F_Printf_Erro(TKFechaChaves);return 0;}
 		}
 		else{return 0;}
+		*/
 	}
 	else if(While(Com_C, lbreak)){
 		return 1;
@@ -1656,6 +1656,7 @@ int BlocoComando(char Com_C[], char lbreak[]){
 	// 	return 1;
 	// }
 	else if(tk==TKBreak) {
+		/*
 		getToken();
 		if(tk==TKPontoEVirgula){
 			getToken();
@@ -1664,6 +1665,7 @@ int BlocoComando(char Com_C[], char lbreak[]){
 			}
 			else{return 0;}
 		}else{F_Printf_Erro(TKPontoEVirgula);return 0;}
+		*/
 	}
 	else if(E(Com_C)){
 		if(tk==TKPontoEVirgula) {
@@ -1674,6 +1676,7 @@ int BlocoComando(char Com_C[], char lbreak[]){
 	else{return 1;}
 }
 
+/*
 //G -> DecGeral G | While G | DoWhile G | For G | If G | SwitchCase G | break | E G | ?
 int G(char G_c[], char lbreak[]){
 	if(DecGeral(G_c)){
@@ -1739,9 +1742,25 @@ int G(char G_c[], char lbreak[]){
 	}
 	else{return 1;}
 }
-
+*/
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! NOVO COMANDO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+int Break(char Break_c[MAX_COD], char lbreak[]){
+
+	if(tk==TKBreak){
+		getToken();
+		if(tk == TKPontoEVirgula){// ;
+			getToken();
+        	if(lbreak[0]=='\0'){F_Printf_Erro(TKBreak);return 0;}
+
+        	sprintf(Break_c,"\tgoto %s\n",lbreak);
+			return 1;
+		}
+		else{F_Printf_Erro(TKPontoEVirgula);return 0;}
+    }
+	else{return 1;}
+}
 
 int Exp(char Exp_c[MAX_COD]){
     //char id[10];
@@ -1757,14 +1776,14 @@ int Exp(char Exp_c[MAX_COD]){
     }
 }
 
-int Com_Composto(char Comp_c[]){
+int Com_Composto(char Comp_c[], char lbreak[]){
     char Com_C[MAX_COD];
 
 	if(tk==TKAbreChaves){
 		getToken();
 		strcpy(Comp_c,"");
 		while (tk!=TKFechaChaves){
-			if(!Com(Com_C, "")) return 0;
+			if(!Com(Com_C, lbreak)) return 0;
 			strcat(Comp_c,Com_C);
 		}
 		getToken();
@@ -1774,7 +1793,6 @@ int Com_Composto(char Comp_c[]){
 }
 
 int Com(char Com_c[], char lbreak[]) {
-	//char Com_c[MAX_COD],Com2_c[MAX_COD];
 
     if(If(Com_c)) return 1;
 	else if(DecGeral(Com_c)) return 1;
@@ -1782,14 +1800,10 @@ int Com(char Com_c[], char lbreak[]) {
 	else if(DoWhile(Com_c, lbreak)) return 1;
 	else if(For(Com_c, lbreak)) return 1;
 	else if(Exp(Com_c))	return 1;
-	else if(Com_Composto(Com_c)) return 1;
-    /*
-    else if(token==TK_Break){
-        if(lbreak[0]=='\0'){printf("Break fora de iteração"); return 0;}
-        sprintf("%s", lbreak); //todo ver como fazer
-    }
-    else if (tk==TK_id) return Com_Exp(Com_c);
-	*/
+	else if(Com_Composto(Com_c, lbreak)) return 1;
+    else if(Break(Com_c, lbreak)) return 1;
+    //else if (tk==TK_id) return Com_Exp(Com_c);
+	
     else{strcpy(Com_c,"");return 1;}
 }
 
@@ -1821,7 +1835,7 @@ int main(int argc, char *argv[]){
 	getToken();
 	
 	// PERCORRE TODO O ARQUIVO
-	while(c!=EOF){
+	while(c!=EOF && !erro){
         if(Com(Com_C, "") && !erro){
 			fprintf(outC3E, "%s", Com_C);
 			printf("%s", Com_C);

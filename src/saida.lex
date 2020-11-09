@@ -1,11 +1,11 @@
 		   Token	   Lexema   Linha   Coluna
-                    TKId                a       1        2
-         TKAbreColchetes                [       1        3
-               TKInteiro                1       1        4
-         TKFechaColchetes               ]       1        5
-         TKAbreColchetes                [       1        6
-               TKInteiro                3       1        7
-         TKFechaColchetes               ]       1        8
-                 TKAtrib                =       1       10
-                    TKId                b       1       12
-         TKPontoEVirgula                ;       1       13
+                    TKIf               if       1        3
+        TKAbreParenteses                (       1        4
+                    TKId                a       1        5
+                 TKMaior                >       1        6
+               TKInteiro                4       1        7
+       TKFechaParenteses                )       1        8
+            TKAbreChaves                {       1        9
+                 TKBreak            break       2        9
+         TKPontoEVirgula                ;       2       10
+           TKFechaChaves                }       3        1
