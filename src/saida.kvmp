@@ -1,15 +1,18 @@
+	T000 = 0
+	i = T000
 LB000:
-	T000 = 3
-	a = T000
-	T001 = 6
-	if a = T001 goto LB003
+	T001 = 10
+	T002 = i < T001
+	if T002 = 1 goto LB001
 	goto LB002
+LB001:
+	T006 = 44
+	T007 = a+T006
+	a = T007
 LB003:
+	T003 = i
+	T004 = 1
+	T005 = i+T004
+	i = T005
 	goto LB000
 LB002:
-	T002 = 2
-	b = T002
-	T003 = 5
-	if a < T003 goto LB000
-	goto LB001
-LB001:

@@ -42,7 +42,7 @@
 #define TKDiferente 42 // 42
 #define TKIgual 43 // 43
 #define TKAnd 44 // 44
-#define TKOr 44 // 44
+#define TKOr 45 // 45
 #define TKRestoIgual 46 // 46
 #define TKInterogacao 47 // 47
 #define TKXor 48 // XOR Para Bits
@@ -646,7 +646,7 @@ int While(char while_c[], char lbreak[], char lcontinue[]){
 				if (tk == TKFechaParenteses){
 					getToken();
 					if(Com(Com_c, labelfim, labelwhile)){
-						sprintf(while_c,"%s:%s%s:\n%s\tgoto %s\n%s:\n",
+						sprintf(while_c,"%s:\n%s%s:\n%s\tgoto %s\n%s:\n",
                                 		labelwhile,Rel_c,labeltrue,Com_c,labelwhile,labelfim);
 						return 1;
 					}else{return 0;}
@@ -712,13 +712,13 @@ int For(char for_c[], char lbreak[], char lcontinue[]){
 		getToken();
 		if(tk == TKAbreParenteses){// (
 			getToken();
-			if (Rel(Rel1_c, "", "")){
+			if (E1(Rel1_p, Rel1_c)){
 				if(tk == TKPontoEVirgula){// ;
 					getToken();
 					if (Rel(Rel2_c, labeltrue, labelfim)){
 						if(tk == TKPontoEVirgula){// ;
 							getToken();
-							if (Rel(Rel3_c, "", "")){
+							if (E1(Rel3_p, Rel3_c)){
 								if(tk == TKFechaParenteses){// )
 									getToken();
 									if (Com(Com_c, labelfim, labelinc)){
@@ -895,7 +895,7 @@ int CharConst(){
 
 //If -> if ( E ) Com Else
 int If(char if_c[MAX_COD], char lbreak[], char lcontinue[]){
-	char Rel_c[MAX_COD],Com1_c[MAX_COD],Else_c[MAX_COD];
+	char Rel_c[MAX_COD],Rel_p[MAX_COD],Com1_c[MAX_COD],Else_c[MAX_COD];
     char labelelse[10],labelthen[10],labelfim[10];
 
 	if(tk == TKIf){// if
@@ -952,39 +952,13 @@ int Else(char else_c[MAX_COD], char lbreak[], char lcontinue[], char labelelse[M
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> INICIO EXPRESSOES <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
-    char E1_c[MAX_COD],E2_c[MAX_COD],R_sc[MAX_COD],E1_p[MAX_COD],E2_p[MAX_COD],R_sp[MAX_COD];
+	char E1_c[MAX_COD],E2_c[MAX_COD],E1_p[MAX_COD],E2_p[MAX_COD];
 
-    if (E1(E1_p, E1_c)){
-        char op[10];
-        if 		(tk==TKMaior) strcpy(op,">");
-        else if (tk==TKMenor) strcpy(op,"<");
-        else if (tk==TKIgual) strcpy(op,"=");
-        else if (tk==TKDiferente) strcpy(op,"<>");
-        else if (tk==TKMaiorIgual) strcpy(op,">=");
-        else if (tk==TKMenorIgual) strcpy(op,"<=");
-
-		switch (tk){
-			case TKMaior:
-			case TKMenor:
-			case TKIgual:
-			case TKDiferente:
-			case TKMaiorIgual:
-			case TKMenorIgual:
-		
-				getToken();
-				if (E1(E2_p, E2_c)){
-					sprintf(Rel_c,"%s%s\tif %s %s %s goto %s\n\tgoto %s\n",
-						E1_c,E2_c,E1_p,op,E2_p,Rel_true,Rel_false);
-					return 1;
-				}
-				return 0;
-			break;
-        default:
-            strcpy(Rel_c, E1_c);
-            return 1;
-        }
-    }
-    return 0;
+	if (E1(E1_p, E1_c)){
+		sprintf(Rel_c, "%s\tif %s = 1 goto %s\n\tgoto %s\n", E1_c,E1_p,Rel_true,Rel_false);
+		return 1;
+	}
+	else{F_Printf_Erro(TKExpressao); return 0;}
 }
 
 //E -> E1
@@ -1004,7 +978,7 @@ int E1(char E1_p[MAX_COD],char E1_c[MAX_COD]){
 	char A1_p[MAX_COD],A1_c[MAX_COD],E1L_c[MAX_COD],E1L_p[MAX_COD],E1L1_hp[MAX_COD];
 
 	//todo mudar para E2
-	if(E11(E1L_p, E1L_c)){
+	if(E3(E1L_p, E1L_c)){
 		if(tk == TKAtrib){// =
 			getToken();
 			if(E1(A1_p, A1_c)){
@@ -1085,11 +1059,18 @@ int E2(){
 	}
 	else{return 0;}
 }
+*/
 
 //E3 -> E4 E4Linha
-int E3(){
-	if(E4()){
-		if(E3Linha()){
+int E3(char E3_p[MAX_COD],char E3_c[MAX_COD]){
+	char E4_p[MAX_COD],E4_c[MAX_COD],E3L_hp[MAX_COD],E3L_sp[MAX_COD],E3L_hc[MAX_COD],E3L_sc[MAX_COD];
+
+	if(E4(E4_p,E4_c)){
+		strcpy(E3L_hc,E4_c);
+        strcpy(E3L_hp,E4_p);
+		if(E3Linha(E3L_hp, E3L_sp, E3L_hc, E3L_sc)){
+			strcpy(E3_c,E3L_sc);
+            strcpy(E3_p,E3L_sp);
 			return 1;
 		}
 		else{return 0;}
@@ -1098,40 +1079,24 @@ int E3(){
 }
 
 //E3Linha -> || E4 E3Linha | ?
-int E3Linha(){
+int E3Linha(char E3L_hp[MAX_COD], char E3L_sp[MAX_COD], char E3L_hc[MAX_COD], char E3L_sc[MAX_COD]){
+	char E4_c[MAX_COD], E3L1_hc[10000], E3L1_sc[MAX_COD], E4_p[MAX_COD], E3L1_hp[MAX_COD], E3L1_sp[MAX_COD];
+
 	if(tk == TKOr){// ||
 		getToken();
-		if(E4()){
-			if(E3Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else{return 1;}
-}
+		if(E4(E4_p, E4_c)){
+			char labeltrue[10],labelfim[10];
 
-//E4 -> E5 {Bh=num} E4Linha
-int E4(){
-	if(E5()){
-		// acao semantica
-		if(E4Linha()){
-			return 1;
-		}
-		else{return 0;}
-	}
-	else{return 0;}
-	//return 1;
-}
+			geralabel(labeltrue);
+			geralabel(labelfim);
+			geratemp(E3L1_hp);
+			
+			sprintf(E3L1_hc,"%s%s\tif %s = 1 goto %s\n\tif %s = 1 goto %s\n\t%s = 0\n\tgoto %s\n%s:\n\t%s = 1\n%s:\n", 
+								E3L_hc,E4_c,E3L_hp,labeltrue,E4_p,labeltrue,E3L1_hp,labelfim,labeltrue,E3L1_hp,labelfim);
 
-//E4Linha -> && E5 {Nh1=Bh&&num} E4Linha | ? {Bs=Bh}
-int E4Linha(){
-	if(tk == TKAnd){// &&
-		getToken();
-		if(E5()){
-			//acao semantica
-			if(E4Linha()){
+			if(E3Linha(E3L1_hp, E3L1_sp, E3L1_hc, E3L1_sc)){
+				strcpy(E3L_sp, E3L1_sp);
+                strcpy(E3L_sc, E3L1_sc);
 				return 1;
 			}
 			else{return 0;}
@@ -1139,11 +1104,64 @@ int E4Linha(){
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
 	else{
-		//acao semantica
+		strcpy(E3L_sp,E3L_hp);
+    	strcpy(E3L_sc,E3L_hc);
 		return 1;
 	}
 }
 
+//E4 -> E5 E4Linha
+int E4(char E4_p[MAX_COD],char E4_c[MAX_COD]){
+	char E5_p[MAX_COD],E5_c[MAX_COD],E4L_hp[MAX_COD],E4L_sp[MAX_COD],E4L_hc[MAX_COD],E4L_sc[MAX_COD];
+
+	//todo mudar para E5
+	if(E8(E5_p,E5_c)){
+		strcpy(E4L_hc,E5_c);
+        strcpy(E4L_hp,E5_p);
+		if(E4Linha(E4L_hp, E4L_sp, E4L_hc, E4L_sc)){
+			strcpy(E4_c,E4L_sc);
+            strcpy(E4_p,E4L_sp);
+			return 1;
+		}
+		else{return 0;}
+	}
+	else{return 0;}
+}
+
+//E4Linha -> && E5 E4Linha | ?
+int E4Linha(char E4L_hp[MAX_COD], char E4L_sp[MAX_COD], char E4L_hc[MAX_COD], char E4L_sc[MAX_COD]){
+	char E5_c[MAX_COD], E4L1_hc[10000], E4L1_sc[MAX_COD], E5_p[MAX_COD], E4L1_hp[MAX_COD], E4L1_sp[MAX_COD];
+
+	if(tk == TKAnd){// &&
+		getToken();
+		//todo mudar para E5
+		if(E8(E5_p, E5_c)){
+			char labeltrue[10],labelfim[10];
+
+			geralabel(labeltrue);
+			geralabel(labelfim);
+			geratemp(E4L1_hp);
+			
+			sprintf(E4L1_hc,"%s%s\tif %s = 0 goto %s\n\tif %s = 0 goto %s\n\t%s = 1\n\tgoto %s\n%s:\n\t%s = 0\n%s:\n", 
+								E4L_hc,E5_c,E4L_hp,labeltrue,E5_p,labeltrue,E4L1_hp,labelfim,labeltrue,E4L1_hp,labelfim);
+			
+			if(E4Linha(E4L1_hp, E4L1_sp, E4L1_hc, E4L1_sc)){
+				strcpy(E4L_sp, E4L1_sp);
+                strcpy(E4L_sc, E4L1_sc);
+				return 1;
+			}
+			else{return 0;}
+		}
+		else{F_Printf_Erro(TKExpressao);return 0;}
+	}
+	else{
+		strcpy(E4L_sp,E4L_hp);
+    	strcpy(E4L_sc,E4L_hc);
+		return 1;
+	}
+}
+
+/*
 //E5 -> E6 E5Linha
 int E5(){
 	if(E6()){
@@ -1221,103 +1239,79 @@ int E7Linha(){
 	}
 	else{return 1;}
 }
-
-//E8 -> E9 E8Linha
-int E8(){
-	if(E9()){
-		if(E8Linha()){
-			return 1;
-		}
-		else{return 0;}
-	}
-	else{return 0;}
-}
-
-//E8Linha -> == E9 E8Linha | != E9 E8Linha | ?
-int E8Linha(){
-	if(tk == TKIgual){// ==
-		getToken();
-		if(E9()){
-			if(E8Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else if(tk == TKDiferente){// !=
-		getToken();
-		if(E9()){
-			if(E8Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else{return 1;}
-}
-
-//E9 -> E10 E9Linha
-int E9(char E9_p[MAX_COD],char E9_c[MAX_COD]){
-
-	char E1_c[MAX_COD],E2_c[MAX_COD],R_sc[MAX_COD],E1_p[MAX_COD],E2_p[MAX_COD],R_sp[MAX_COD];
-
-	if(E10(E9_p, E9_c)){
-		if(E9Linha(E9_p, E9_c)){
-			return 1;
-		}
-		else{return 0;}
-	}
-	else{return 0;}
-}
-
-//E9Linha -> < E10 E9Linha | <= E10 E9Linha | >= E10 E9Linha | > E10 E9Linha | ?
-int E9Linha(char Rel_p[MAX_COD],char Rel_c[MAX_COD]){
-	if(tk == TKMenor){// <
-		getToken();
-		if(E10()){
-			if(E9Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else if(tk == TKMenorIgual){// <=
-		getToken();
-		if(E10()){
-			if(E9Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else if(tk == TKMaiorIgual){// >=
-		getToken();
-		if(E10()){
-			if(E9Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else if(tk == TKMaior){// >
-		getToken();
-		if(E10()){
-			if(E9Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else{return 1;}
-}
 */
 
+int E8(char E8_p[MAX_COD], char E8_c[MAX_COD]){
+    char E9_c[MAX_COD],E2_c[MAX_COD],E9_p[MAX_COD],E2_p[MAX_COD];
+
+    if (E9(E9_p, E9_c)){
+        char op[10];
+        if (tk==TKIgual) strcpy(op,"=");
+        else if (tk==TKDiferente) strcpy(op,"<>");
+
+		switch (tk){
+			case TKIgual:
+			case TKDiferente:
+		
+				getToken();
+				if (E1(E2_p, E2_c)){
+					char E8L_p[MAX_COD];
+					geratemp(E8L_p);
+
+					sprintf(E8_c,"%s%s\t%s = %s %s %s\n",
+						E9_c,E2_c,E8L_p,E9_p,op,E2_p);
+					strcpy(E8_p, E8L_p);
+					return 1;
+				}
+				return 0;
+			break;
+        default:
+            strcpy(E8_c, E9_c);
+			strcpy(E8_p, E9_p);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int E9(char E9_p[MAX_COD], char E9_c[MAX_COD]){
+    char E10_c[MAX_COD],E2_c[MAX_COD],E10_p[MAX_COD],E2_p[MAX_COD];
+
+	//todo mudar para E10
+    if (E11(E10_p, E10_c)){
+        char op[10];
+        if 		(tk==TKMaior) strcpy(op,">");
+        else if (tk==TKMenor) strcpy(op,"<");
+        else if (tk==TKMaiorIgual) strcpy(op,">=");
+        else if (tk==TKMenorIgual) strcpy(op,"<=");
+
+		switch (tk){
+			case TKMaior:
+			case TKMenor:
+			case TKMaiorIgual:
+			case TKMenorIgual:
+		
+				getToken();
+				if (E11(E2_p, E2_c)){
+					char E9L_p[MAX_COD];
+					geratemp(E9L_p);
+
+					sprintf(E9_c,"%s%s\t%s = %s %s %s\n",E10_c,E2_c,E9L_p,E10_p,op,E2_p);
+					strcpy(E9_p, E9L_p);
+					return 1;
+				}
+				return 0;
+			break;
+        default:
+            strcpy(E9_c, E10_c);
+			strcpy(E9_p, E10_p);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/*
 //E10 -> E11 E10Linha
 int E10(char E10_p[MAX_COD], char E10_c[MAX_COD]){
 	if(E11(E10_p, E10_c)){
@@ -1353,6 +1347,7 @@ int E10Linha(char E10L_p[MAX_COD], char E10L_c[MAX_COD]){
 	}
 	else {return 1;}
 }
+*/
 
 //E11 -> E12 E11Linha
 int E11(char E11_p[MAX_COD], char E11_c[MAX_COD]){
@@ -1526,6 +1521,18 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 		getToken();
 		if(tk == TKDuploMais){// ++
 			getToken();
+
+			char label[10], E14_hp[10], E14L_hp[10];
+			geratemp(label);
+			geratemp(E14_hp);
+			geratemp(E14L_hp);		
+
+            sprintf(E14L_c,"\t%s = 1\n\t%s = %s+%s\n\t%s = %s\n", E14_hp,E14L_hp,E14_p,E14_hp,E14_p,E14L_hp);
+			sprintf(E14_c, "\t%s = %s\n%s", label,E14_p,E14L_c);
+
+			// retorna temporario que possui o valor antes do incremento
+			strcpy(E14_p, label);
+
 			return 1;
 		}
 		else if(tk == TKDuploMenos){// --

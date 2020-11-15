@@ -1,10 +1,2 @@
-do{
-    a = 3;
-
-    if(a == 6){
-        continue;
-    }
-
-    b = 2;
-
-}while(a<5);
+for(i=0;i<10;i++)
+    a += 44;
