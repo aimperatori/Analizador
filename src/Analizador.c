@@ -75,6 +75,8 @@
 #define false 0
 #define true 1
 
+#define MAX_COD 1000
+
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -321,9 +323,132 @@ void getToken() {
 
 //  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> FIM LEXICO <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-#define MAX_COD 1000
+//  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> INICIO SEMANTICO <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-//int G(char Com_c[], char lbreak[]);
+#define TAM_PILHA 10
+
+int topo = 0;
+int curVarGlobal = -1;
+int curVarLocal[TAM_PILHA];
+
+struct DecVar {
+	int tipo;
+	char nome[50];
+	int linha;
+	int coluna;
+} typedef DecVar;
+
+DecVar varGlobal[100];
+DecVar varLocal[TAM_PILHA][100];
+
+//#define empilha() ++topo
+//#define desempilha() --topo
+
+void empilha(){
+	curVarLocal[++topo] = -1;
+}
+
+void desempilha(){
+	curVarLocal[topo--] = -1;
+}
+
+void incVar(){
+	// 0 = GLOBAL
+	if(topo == 0){
+		curVarGlobal++;
+	}
+	else{
+		curVarLocal[topo]++;
+	}
+}
+
+int verificaDecVar(DecVar decVar[], char nome[], int numVar){
+	int i;
+
+	for(i=0; i <= numVar; i++){
+		if(strcmp(decVar[i].nome, nome) == 0){
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+int verificaDecVarEscopo(char nome[]){
+	// 0 = GLOBAL
+	if(topo == 0){
+		return verificaDecVar(varGlobal, nome, curVarGlobal);
+	}
+	else{
+		return verificaDecVar(varLocal[topo], nome, curVarLocal[topo]-1);
+	}
+}
+
+int verificaDecVarGeral(char nome[]){
+	int aux = topo;
+
+	while(aux){
+		if(verificaDecVar(varLocal[aux], nome, curVarLocal[aux]))
+			return 1;
+		
+		aux--;
+	}
+
+	if(verificaDecVar(varGlobal, nome, curVarGlobal))
+		return 1;
+
+	return 0;
+}
+
+void decVarSetLinhaColuna(){
+	if(topo == 0){
+		varGlobal[curVarGlobal].linha = lin;
+		varGlobal[curVarGlobal].coluna = col;
+	}
+	else{
+		varLocal[topo][curVarLocal[topo]].linha = lin;
+		varLocal[topo][curVarLocal[topo]].coluna = col;
+	}
+}
+
+void decVarSetTipo(int tipo){
+	if(topo == 0){
+		varGlobal[curVarGlobal].tipo = tipo;
+	}
+	else{
+		varLocal[topo][curVarLocal[topo]].tipo = tipo;
+	}
+}
+
+void decVarSetNome(char nome[MAX_COD]){
+	int i;
+
+	if(!verificaDecVarEscopo(nome)){
+		if(topo == 0){
+			strcpy(varGlobal[curVarGlobal].nome, nome);
+		}
+		else{
+			strcpy(varLocal[topo][curVarLocal[topo]].nome, nome);
+		}
+		decVarSetLinhaColuna();
+	}
+	else{
+		printf("Erro: redeclaracao de %s. Linha: %d Coluna: %d\n", nome, lin, col);
+		erro = true;
+	}
+}
+
+int isVarDec(char nome[]){
+	int pos;
+	if(!verificaDecVarGeral(nome)){
+		printf("Erro: variavel %s nao declarada. Linha: %d Coluna: %d\n", nome, lin, col);
+			
+		erro = true;
+	}
+}
+
+//  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> FIM SEMANTICO <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 int E();
 int DecGeral(char[]);
 int DecGeral2();
@@ -424,7 +549,25 @@ void geratemp(char temp[]){
 }
 
 //Tipo -> void | short | int | long | float | double | char
-int Tipo(){
+int Tipo(int *dec_p){
+
+	switch (tk)	{
+		case TKVoid:
+		case TKShort:
+		case TKInt:
+		case TKLong:
+		case TKFloat:
+		case TKDouble:
+		case TKChar:
+
+			*dec_p = tk;
+			getToken();
+			return 1;	
+		default:
+			return 0;
+	}
+/*
+	//todo Remover futuramente
 	if(tk == TKVoid){// void
 		getToken();
 		return 1;
@@ -454,6 +597,7 @@ int Tipo(){
 		return 1;
 	}
 	else{return 0;}
+*/
 }
 
 //Parametro -> Parametro2 | ?
@@ -466,7 +610,9 @@ int Parametro(){
 
 //Parametro2 -> Tipo id Parametro2Linha
 int Parametro2(){
-	if(Tipo()){
+	int tipo_p;
+
+	if(Tipo(&tipo_p)){
 		if(tk == TKId){// id
 			getToken();
 			if (Parametro2Linha()){
@@ -514,10 +660,18 @@ int Return(){
 
 //DecGeral -> Tipo id DecGeral2
 int DecGeral(char DecGeral2_C[MAX_COD]){
-	if(Tipo()){
+	int dec_p;
+	
+	if(Tipo(&dec_p)){
+		incVar();
+		decVarSetTipo(dec_p);
+
 		if(tk == TKId){// id
+
+			decVarSetNome(lex);
+
 			getToken();
-			if (DecGeral2(DecGeral2_C)){
+			if (DecGeral2(DecGeral2_C, dec_p)){
 				return 1;
 			}
 			else{return 0;}
@@ -528,13 +682,13 @@ int DecGeral(char DecGeral2_C[MAX_COD]){
 }
 
 //DecGeral2 -> ( Parametro ) BlocoComando | Dec1
-int DecGeral2(char DecGeral2_C[MAX_COD]){
+int DecGeral2(char DecGeral2_C[MAX_COD], int dec_p){
 	if(tk == TKAbreParenteses){ // (
 		getToken();
 		if (Parametro()){
 			if(tk == TKFechaParenteses){ // )
 				getToken();
-				if (BlocoComando(DecGeral2_C, "")){
+				if (Com(DecGeral2_C, "", "")){
 					return 1;
 				}
 				else{return 0;}
@@ -543,40 +697,40 @@ int DecGeral2(char DecGeral2_C[MAX_COD]){
 		}
 		else{return 0;}
 	}
-	else if (Dec1(DecGeral2_C)){
+	else if (Dec1(DecGeral2_C, dec_p)){
 		return 1;
 	}
 	else{return 0;}
 }
 
 //Dec1 -> = E Dec2 | Dec2
-int Dec1(char Dec1_C[MAX_COD]){
+int Dec1(char Dec1_C[MAX_COD], int dec_p){
 	if(tk == TKAtrib){// =
 		getToken();
 		if (E(Dec1_C)){
-			if (Dec2(Dec1_C)){
+			if (Dec2(Dec1_C, dec_p)){
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{return 0;}
 	}
-	else if (Dec2(Dec1_C)){
+	else if (Dec2(Dec1_C, dec_p)){
 		return 1;
 	}
 	else{return 0;}
 }
 
 //Dec2 -> ; | , Declarator Dec2
-int Dec2(char Dec2_C[MAX_COD]){
+int Dec2(char Dec2_C[MAX_COD], int dec_p){
 	if(tk == TKPontoEVirgula){// ;
 		getToken();
 		return 1;
 	}
 	else if(tk == TKVirgula){// ,
 		getToken();
-		if (Declarator(Dec2_C)){
-			if (Dec2(Dec2_C)){
+		if (Declarator(Dec2_C, dec_p)){
+			if (Dec2(Dec2_C, dec_p)){
 				return 1;
 			}
 			else{return 0;}
@@ -587,8 +741,13 @@ int Dec2(char Dec2_C[MAX_COD]){
 }
 
 //Declarator -> id = E | id
-int Declarator(char Declarator_C[MAX_COD]){
+int Declarator(char Declarator_C[MAX_COD], int dec_p){
 	if(tk == TKId){// id
+
+		incVar();
+		decVarSetTipo(dec_p);
+		decVarSetNome(lex);
+
 		getToken();
 		if(tk == TKAtrib){// =
 			getToken();
@@ -1241,6 +1400,7 @@ int E7Linha(){
 }
 */
 
+// E8 -> E9 = E1 | E9 != E1 | ?
 int E8(char E8_p[MAX_COD], char E8_c[MAX_COD]){
     char E9_c[MAX_COD],E2_c[MAX_COD],E9_p[MAX_COD],E2_p[MAX_COD];
 
@@ -1254,6 +1414,7 @@ int E8(char E8_p[MAX_COD], char E8_c[MAX_COD]){
 			case TKDiferente:
 		
 				getToken();
+				//todo E1 mesmo ou E9 ??
 				if (E1(E2_p, E2_c)){
 					char E8L_p[MAX_COD];
 					geratemp(E8L_p);
@@ -1274,6 +1435,7 @@ int E8(char E8_p[MAX_COD], char E8_c[MAX_COD]){
     return 0;
 }
 
+// E9 -> E10 > E11 | E10 < E11 | E10 >= E11 | E10 <= E11 | ?
 int E9(char E9_p[MAX_COD], char E9_c[MAX_COD]){
     char E10_c[MAX_COD],E2_c[MAX_COD],E10_p[MAX_COD],E2_p[MAX_COD];
 
@@ -1461,9 +1623,18 @@ int E12Linha(char E12L_hp[MAX_COD], char E12L_sp[MAX_COD], char E12L_hc[MAX_COD]
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
 	else if(tk == TKResto){// %
+
+		// verificar se é inteiro
+		//E12L_hp;
+		//
+
 		getToken();
 		if(E13(E13_p, E13_c)){
 			
+			// verificar se é inteiro
+			//E13_p;
+			//
+
 			geratemp(E12L1_hp);
             sprintf(E12L1_hc,"%s%s\t%s = %s%%%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
 
@@ -1518,6 +1689,9 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 	if(tk == TKId){// id
 		strcpy(E14_c, "");
         strcpy(E14_p, lex);
+
+		isVarDec(lex);
+
 		getToken();
 		if(tk == TKDuploMais){// ++
 			getToken();
@@ -1615,7 +1789,7 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 		//char E14L_c[MAX_COD],E14L_p[MAX_COD];
 		getToken();
 		//todo: mudar pro E1
-		if (E11(E14L_p, E14L_c)){
+		if (E1(E14L_p, E14L_c)){
 			if(tk == TKFechaParenteses){// )
 				getToken();
 				strcpy(E14_c,E14L_c);
@@ -1807,12 +1981,18 @@ int Com_Composto(char Comp_c[], char lbreak[], char lcontinue[]){
     char Com_C[MAX_COD];
 
 	if(tk==TKAbreChaves){
+
+		//
+		empilha();
+
 		getToken();
 		strcpy(Comp_c,"");
 		while (tk!=TKFechaChaves){
 			if(!Com(Com_C, lbreak, lcontinue)) return 0;
 			strcat(Comp_c,Com_C);
 		}
+		//
+		desempilha();
 		getToken();
 		return 1;
 	}
@@ -1858,9 +2038,17 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
+	// ZERA A PILHA DE DECLARACOES
+	for(int i=0;i<TAM_PILHA;i++){
+		curVarLocal[i] = -1;
+	}
+
 	// INICIA ANALISE DO ARQUIVO
 	proxC();
 	getToken();
+
+	// INICIALIZA CODIGO COMO VAZIO PARA NAO IMPRIMIR SUJEIRA
+	Com_C[0] = '\0';
 	
 	// PERCORRE TODO O ARQUIVO
 	while(c!=EOF && !erro){
@@ -1871,6 +2059,15 @@ int main(int argc, char *argv[]){
     }
 
 	if(!erro) printf("Reconheceu OK!\n");
+
+
+	// TESTE SEMANTICO
+
+	for(int i =0;i<=curVarGlobal;i++){
+		printf("%d - %s - %d %d\n", varGlobal[i].tipo, varGlobal[i].nome, varGlobal[i].linha, varGlobal[i].coluna);
+	}
+
+	//
 
 	fclose(in);
 	fclose(outLex);
