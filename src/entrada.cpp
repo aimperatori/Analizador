@@ -1,3 +1,6 @@
 float a,b;
 
-a = b % 3.1;
+a = 3;
+
+while(1)
+continue;

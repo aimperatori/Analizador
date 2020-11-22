@@ -1,0 +1,16 @@
+		   Token	   Lexema   Linha   Coluna
+                 TKFloat            float       1        6
+                    TKId                a       1        8
+               TKVirgula                ,       1        9
+                    TKId                b       1       10
+         TKPontoEVirgula                ;       1       11
+                    TKId                a       3        1
+                 TKAtrib                =       3        3
+               TKInteiro                3       3        5
+         TKPontoEVirgula                ;       3        6
+                 TKWhile            while       5        5
+        TKAbreParenteses                (       5        6
+               TKInteiro                1       5        7
+       TKFechaParenteses                )       5        8
+              TKContinue         continue       6        8
+         TKPontoEVirgula                ;       6        9
