@@ -284,7 +284,7 @@ void getToken() {
 					if (c=='%'){
 						proxC();col++;
 						if(c=='='){lex[posl]='\0';proxC();col++;tk=TKRestoIgual;return;
-						}else{lex[posl]='\0';proxC();tk=TKResto;return;}
+						}else{lex[posl]='\0';tk=TKResto;return;}
 					}
 					if (c=='('){lex[posl]='\0';proxC();col++;tk=TKAbreParenteses;return;}
 					if (c==')'){lex[posl]='\0';proxC();col++;tk=TKFechaParenteses;return;}
@@ -359,6 +359,28 @@ void incVar(){
 	}
 }
 
+int getTipoDecVar(DecVar decVar[], char nome[], int numVar){
+	int i;
+
+	for(i=0; i <= numVar; i++){
+		if(strcmp(decVar[i].nome, nome) == 0){
+			return decVar[i].tipo;
+		}
+	}
+
+	return 0;
+}
+
+int getTipoDecVarEscopo(char nome[]){
+	// 0 = GLOBAL
+	if(topo == 0){
+		return getTipoDecVar(varGlobal, nome, curVarGlobal);
+	}
+	else{
+		return getTipoDecVar(varLocal[topo], nome, curVarLocal[topo]-1);
+	}
+}
+
 int verificaDecVar(DecVar decVar[], char nome[], int numVar){
 	int i;
 
@@ -419,8 +441,17 @@ void decVarSetTipo(int tipo){
 	}
 }
 
+int decVarGetTipo(){
+	// 0 = GLOBAL
+	if(topo == 0){
+		return varGlobal[curVarGlobal].tipo;
+	}
+	else{
+		return varLocal[topo][curVarLocal[topo]].tipo;
+	}
+}
+
 void decVarSetNome(char nome[MAX_COD]){
-	int i;
 
 	if(!verificaDecVarEscopo(nome)){
 		if(topo == 0){
@@ -432,19 +463,33 @@ void decVarSetNome(char nome[MAX_COD]){
 		decVarSetLinhaColuna();
 	}
 	else{
+		#ifdef SEMANTICO
 		printf("Erro: redeclaracao de %s. Linha: %d Coluna: %d\n", nome, lin, col);
 		erro = true;
+		#endif
 	}
 }
 
 int isVarDec(char nome[]){
 	int pos;
 	if(!verificaDecVarGeral(nome)){
-		printf("Erro: variavel %s nao declarada. Linha: %d Coluna: %d\n", nome, lin, col);
-			
+		#ifdef SEMANTICO
+		printf("Erro: variavel %s nao declarada. Linha: %d Coluna: %d\n", nome, lin, col);	
 		erro = true;
+		#endif
 	}
 }
+
+// Retorna o tipo de retorno entre 2 tipos
+int getTipo(int tipo1, int tipo2){
+	if(tipo1 == TKInt && tipo2 == TKInt)
+		return TKInt;
+	else
+		return TKFloat;
+
+	return 0;
+}
+
 
 //  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> FIM SEMANTICO <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -471,6 +516,8 @@ int Parametro2Linha();
 int BlocoComando();
 int Rel(char[], char[], char[]);
 int E();
+int E0();
+int E0Linha();
 int E1();
 int E2();
 int E3();
@@ -494,7 +541,7 @@ int E11Linha();
 int E12();
 int E12Linha();
 int E13();
-int E14(char[], char[]);
+int E14(char[], char[], int *);
 int Return();
 void geralabel(char[]);
 void geratemp(char[]);
@@ -822,7 +869,7 @@ int DoWhile(char dowhile_c[], char lbreak[], char lcontinue[]){
 	else{return 0;}
 }
 
-//For -> for ( E1 ; REL ; R1 ) Com
+//For -> for ( E0 ; REL ; R1 ) Com
 int For(char for_c[], char lbreak[], char lcontinue[]){
 	char Rel1_c[MAX_COD],Rel1_p[MAX_COD],Rel2_c[MAX_COD],Rel2_p[MAX_COD],Rel3_c[MAX_COD],Rel3_p[MAX_COD],Com_c[MAX_COD];
     char labelini[10],labeltrue[10],labelfim[10],labelinc[10];
@@ -836,13 +883,13 @@ int For(char for_c[], char lbreak[], char lcontinue[]){
 		getToken();
 		if(tk == TKAbreParenteses){// (
 			getToken();
-			if (E1(Rel1_p, Rel1_c)){
+			if (E0(Rel1_p, Rel1_c)){
 				if(tk == TKPontoEVirgula){// ;
 					getToken();
 					if (Rel(Rel2_c, labeltrue, labelfim)){
 						if(tk == TKPontoEVirgula){// ;
 							getToken();
-							if (E1(Rel3_p, Rel3_c)){
+							if (E0(Rel3_p, Rel3_c)){
 								if(tk == TKFechaParenteses){// )
 									getToken();
 									if (Com(Com_c, labelfim, labelinc)){
@@ -1066,33 +1113,79 @@ int Else(char else_c[MAX_COD], char lbreak[], char lcontinue[], char labelelse[M
 int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
 	char E1_c[MAX_COD],E2_c[MAX_COD],E1_p[MAX_COD],E2_p[MAX_COD];
 
-	if (E1(E1_p, E1_c)){
+	if (E0(E1_p, E1_c)){
 		sprintf(Rel_c, "%s\tif %s = 1 goto %s\n\tgoto %s\n", E1_c,E1_p,Rel_true,Rel_false);
 		return 1;
 	}
 	else{F_Printf_Erro(TKExpressao); return 0;}
 }
 
-//E -> E1
+//E -> E0
 int E(char Com_c[MAX_COD]){
 	char E_c[MAX_COD],E_p[MAX_COD];
 
-	if(E1(E_p, E_c)){
+	if(E0(E_p, E_c)){
 		sprintf(Com_c, "%s", E_c);
 		return 1;
 	}
 	else{return 0;}
 }
 
+//E0 -> E1 E0Linha
+int E0(char E0_p[MAX_COD],char E0_c[MAX_COD]){
+	char E1_p[MAX_COD],E1_c[MAX_COD],E0L_hp[MAX_COD],E0L_sp[MAX_COD],E0L_hc[MAX_COD],E0L_sc[MAX_COD];
+	int E1_t, E0L_ht, E0L_st;
+
+	if(E1(E1_p,E1_c, &E1_t)){
+		strcpy(E0L_hc,E1_c);
+        strcpy(E0L_hp,E1_p);
+		E0L_ht = E1_t;
+		if(E0Linha(E0L_hp, E0L_sp, E0L_hc, E0L_sc, &E0L_ht, &E0L_st)){
+			strcpy(E0_c,E0L_sc);
+            strcpy(E0_p,E0L_sp);
+			//*E0_t = E0L_st;
+			return 1;
+		}
+		else{return 0;}
+	}
+	else{return 0;}
+}
+
+int E0Linha(char E0L_hp[MAX_COD], char E0L_sp[MAX_COD], char E0L_hc[MAX_COD], char E0L_sc[MAX_COD], int *E0L_ht, int *E0L_st){
+	char E1_c[MAX_COD], E0L1_hc[10000], E0L1_sc[MAX_COD], E1_p[MAX_COD], E0L1_hp[MAX_COD], E0L1_sp[MAX_COD];
+	int E1_st, E0L1_ht, E0L1_st;
+
+	if(tk == TKVirgula){// ,
+		getToken();
+		if(E1(E1_p, E1_c, &E1_st)){
+			//E0L1_ht = getTipo(*E0L_ht, E1_st);
+
+			sprintf(E0L_sc,"%s%s",E0L_hc,E1_c);
+			strcpy(E0L_sp,E1_p);
+			*E0L_st = E1_st;
+			return 1;
+		}
+	}
+	else{
+		strcpy(E0L_sp,E0L_hp);
+    	strcpy(E0L_sc,E0L_hc);
+		*E0L_st = *E0L_ht;
+		return 1;
+	}
+}
+
 //E1 -> E2 = E1 | E2 += E1 | E2 -= E1 | E2 *= E1 | E2 /= E1 | E2 %= E1 | E2
-int E1(char E1_p[MAX_COD],char E1_c[MAX_COD]){
+int E1(char E1_p[MAX_COD],char E1_c[MAX_COD], int *E1_t){
 	char A1_p[MAX_COD],A1_c[MAX_COD],E1L_c[MAX_COD],E1L_p[MAX_COD],E1L1_hp[MAX_COD];
+	int E2_t, E12_t;
 
 	//todo mudar para E2
-	if(E3(E1L_p, E1L_c)){
+	if(E3(E1L_p, E1L_c, &E2_t)){
 		if(tk == TKAtrib){// =
 			getToken();
-			if(E1(A1_p, A1_c)){
+			if(E1(A1_p, A1_c, &E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+
 				sprintf(E1_c,"%s%s\t%s = %s\n",A1_c,E1L_c,E1L_p,A1_p);
 				strcpy(E1_p, E1L_p);
 				return 1;
@@ -1100,7 +1193,9 @@ int E1(char E1_p[MAX_COD],char E1_c[MAX_COD]){
 		}
 		else if(tk == TKMaisIgual){// +=
 			getToken();
-			if(E1(A1_p, A1_c)){
+			if(E1(A1_p, A1_c,&E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+
 				geratemp(E1L1_hp);
 				sprintf(E1_c,"%s%s\t%s = %s+%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
 				strcpy(E1_p, E1L_p);
@@ -1109,7 +1204,9 @@ int E1(char E1_p[MAX_COD],char E1_c[MAX_COD]){
 		}
 		else if(tk == TKMenosIgual){// -=
 			getToken();
-			if(E1(A1_p, A1_c)){
+			if(E1(A1_p, A1_c,&E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+				
 				geratemp(E1L1_hp);
 				sprintf(E1_c,"%s%s\t%s = %s-%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
 				strcpy(E1_p, E1L_p);
@@ -1118,7 +1215,9 @@ int E1(char E1_p[MAX_COD],char E1_c[MAX_COD]){
 		}
 		else if(tk == TKProdIgual){// *=
 			getToken();
-			if(E1(A1_p, A1_c)){
+			if(E1(A1_p, A1_c,&E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+
 				geratemp(E1L1_hp);
 				sprintf(E1_c,"%s%s\t%s = %s*%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
 				strcpy(E1_p, E1L_p);
@@ -1127,7 +1226,9 @@ int E1(char E1_p[MAX_COD],char E1_c[MAX_COD]){
 		}
 		else if(tk == TKDivisaoIgual){// /=
 			getToken();
-			if(E1(A1_p, A1_c)){
+			if(E1(A1_p, A1_c,&E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+
 				geratemp(E1L1_hp);
 				sprintf(E1_c,"%s%s\t%s = %s/%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
 				strcpy(E1_p, E1L_p);
@@ -1136,7 +1237,14 @@ int E1(char E1_p[MAX_COD],char E1_c[MAX_COD]){
 		}
 		else if(tk == TKRestoIgual){// %=
 			getToken();
-			if(E1(A1_p, A1_c)){
+			if(E1(A1_p, A1_c, &E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+				if(*E1_t != TKInt){
+					printf("Erro: Operador de %% só é possivel com valores inteiros!\n");
+					erro = 1;
+				}
+
+				//TODO Acao semantiva, verificar se ambos sao int
 				geratemp(E1L1_hp);
 				sprintf(E1_c,"%s%s\t%s = %s%%%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
 				strcpy(E1_p, E1L_p);
@@ -1146,6 +1254,7 @@ int E1(char E1_p[MAX_COD],char E1_c[MAX_COD]){
 		else{
 			strcpy(E1_p,E1L_p);
 			strcpy(E1_c,E1L_c);
+			*E1_t = E2_t;
 			return 1;
 		}
 	}
@@ -1180,15 +1289,18 @@ int E2(){
 */
 
 //E3 -> E4 E4Linha
-int E3(char E3_p[MAX_COD],char E3_c[MAX_COD]){
+int E3(char E3_p[MAX_COD],char E3_c[MAX_COD], int *E3_t){
 	char E4_p[MAX_COD],E4_c[MAX_COD],E3L_hp[MAX_COD],E3L_sp[MAX_COD],E3L_hc[MAX_COD],E3L_sc[MAX_COD];
+	int E4_t, E3L_ht, E3L_st;
 
-	if(E4(E4_p,E4_c)){
+	if(E4(E4_p,E4_c,&E4_t)){
 		strcpy(E3L_hc,E4_c);
         strcpy(E3L_hp,E4_p);
-		if(E3Linha(E3L_hp, E3L_sp, E3L_hc, E3L_sc)){
+		E3L_ht = E4_t;
+		if(E3Linha(E3L_hp, E3L_sp, E3L_hc, E3L_sc, &E3L_ht, &E3L_st)){
 			strcpy(E3_c,E3L_sc);
             strcpy(E3_p,E3L_sp);
+			*E3_t = E3L_st;
 			return 1;
 		}
 		else{return 0;}
@@ -1197,12 +1309,15 @@ int E3(char E3_p[MAX_COD],char E3_c[MAX_COD]){
 }
 
 //E3Linha -> || E4 E3Linha | ?
-int E3Linha(char E3L_hp[MAX_COD], char E3L_sp[MAX_COD], char E3L_hc[MAX_COD], char E3L_sc[MAX_COD]){
+int E3Linha(char E3L_hp[MAX_COD], char E3L_sp[MAX_COD], char E3L_hc[MAX_COD], char E3L_sc[MAX_COD], int *E3L_ht, int *E3L_st){
 	char E4_c[MAX_COD], E3L1_hc[10000], E3L1_sc[MAX_COD], E4_p[MAX_COD], E3L1_hp[MAX_COD], E3L1_sp[MAX_COD];
+	int E4_st, E3L1_ht, E3L1_st;
 
 	if(tk == TKOr){// ||
 		getToken();
-		if(E4(E4_p, E4_c)){
+		if(E4(E4_p, E4_c, &E4_st)){
+			E3L1_ht = TKInt;
+
 			char labeltrue[10],labelfim[10];
 
 			geralabel(labeltrue);
@@ -1212,9 +1327,10 @@ int E3Linha(char E3L_hp[MAX_COD], char E3L_sp[MAX_COD], char E3L_hc[MAX_COD], ch
 			sprintf(E3L1_hc,"%s%s\tif %s = 1 goto %s\n\tif %s = 1 goto %s\n\t%s = 0\n\tgoto %s\n%s:\n\t%s = 1\n%s:\n", 
 							 E3L_hc,E4_c,E3L_hp,labeltrue,E4_p,labeltrue,E3L1_hp,labelfim,labeltrue,E3L1_hp,labelfim);
 
-			if(E3Linha(E3L1_hp, E3L1_sp, E3L1_hc, E3L1_sc)){
+			if(E3Linha(E3L1_hp, E3L1_sp, E3L1_hc, E3L1_sc,&E3L1_ht,&E3L1_st)){
 				strcpy(E3L_sp, E3L1_sp);
                 strcpy(E3L_sc, E3L1_sc);
+				*E3L_st = E3L1_st;
 				return 1;
 			}
 			else{return 0;}
@@ -1224,21 +1340,26 @@ int E3Linha(char E3L_hp[MAX_COD], char E3L_sp[MAX_COD], char E3L_hc[MAX_COD], ch
 	else{
 		strcpy(E3L_sp,E3L_hp);
     	strcpy(E3L_sc,E3L_hc);
+		*E3L_st = *E3L_ht;
 		return 1;
 	}
 }
 
 //E4 -> E5 E4Linha
-int E4(char E4_p[MAX_COD],char E4_c[MAX_COD]){
+int E4(char E4_p[MAX_COD],char E4_c[MAX_COD], int *E4_t){
 	char E5_p[MAX_COD],E5_c[MAX_COD],E4L_hp[MAX_COD],E4L_sp[MAX_COD],E4L_hc[MAX_COD],E4L_sc[MAX_COD];
+	int E5_t, E4L_ht, E4L_st;
 
 	//todo mudar para E5
-	if(E8(E5_p,E5_c)){
+	if(E8(E5_p,E5_c,&E5_t)){
 		strcpy(E4L_hc,E5_c);
         strcpy(E4L_hp,E5_p);
-		if(E4Linha(E4L_hp, E4L_sp, E4L_hc, E4L_sc)){
+		E4L_ht = E5_t;
+
+		if(E4Linha(E4L_hp, E4L_sp, E4L_hc, E4L_sc, &E4L_ht, &E4L_st)){
 			strcpy(E4_c,E4L_sc);
             strcpy(E4_p,E4L_sp);
+			*E4_t = E4L_st;
 			return 1;
 		}
 		else{return 0;}
@@ -1247,13 +1368,16 @@ int E4(char E4_p[MAX_COD],char E4_c[MAX_COD]){
 }
 
 //E4Linha -> && E5 E4Linha | ?
-int E4Linha(char E4L_hp[MAX_COD], char E4L_sp[MAX_COD], char E4L_hc[MAX_COD], char E4L_sc[MAX_COD]){
+int E4Linha(char E4L_hp[MAX_COD], char E4L_sp[MAX_COD], char E4L_hc[MAX_COD], char E4L_sc[MAX_COD], int *E4L_ht, int *E4L_st){
 	char E5_c[MAX_COD], E4L1_hc[10000], E4L1_sc[MAX_COD], E5_p[MAX_COD], E4L1_hp[MAX_COD], E4L1_sp[MAX_COD];
+	int E5_st, E4L1_ht, E4L1_st;
 
 	if(tk == TKAnd){// &&
 		getToken();
 		//todo mudar para E5
-		if(E8(E5_p, E5_c)){
+		if(E8(E5_p, E5_c, &E5_st)){
+			E4L1_ht = TKInt;
+
 			char labeltrue[10],labelfim[10];
 
 			geralabel(labeltrue);
@@ -1263,9 +1387,10 @@ int E4Linha(char E4L_hp[MAX_COD], char E4L_sp[MAX_COD], char E4L_hc[MAX_COD], ch
 			sprintf(E4L1_hc,"%s%s\tif %s = 0 goto %s\n\tif %s = 0 goto %s\n\t%s = 1\n\tgoto %s\n%s:\n\t%s = 0\n%s:\n", 
 								E4L_hc,E5_c,E4L_hp,labeltrue,E5_p,labeltrue,E4L1_hp,labelfim,labeltrue,E4L1_hp,labelfim);
 			
-			if(E4Linha(E4L1_hp, E4L1_sp, E4L1_hc, E4L1_sc)){
+			if(E4Linha(E4L1_hp, E4L1_sp, E4L1_hc, E4L1_sc, &E4L1_ht, &E4L1_st)){
 				strcpy(E4L_sp, E4L1_sp);
                 strcpy(E4L_sc, E4L1_sc);
+				*E4L_st = E4L1_st;
 				return 1;
 			}
 			else{return 0;}
@@ -1275,6 +1400,7 @@ int E4Linha(char E4L_hp[MAX_COD], char E4L_sp[MAX_COD], char E4L_hc[MAX_COD], ch
 	else{
 		strcpy(E4L_sp,E4L_hp);
     	strcpy(E4L_sc,E4L_hc);
+		*E4L_st = *E4L_ht;
 		return 1;
 	}
 }
@@ -1359,11 +1485,12 @@ int E7Linha(){
 }
 */
 
-// E8 -> E9 = E1 | E9 != E1 | ?
-int E8(char E8_p[MAX_COD], char E8_c[MAX_COD]){
+// E8 -> E9 == E1 | E9 != E1 | ?
+int E8(char E8_p[MAX_COD], char E8_c[MAX_COD], int *E8_t){
     char E9_c[MAX_COD],E2_c[MAX_COD],E9_p[MAX_COD],E2_p[MAX_COD];
+	int E9_t, E2_t;
 
-    if (E9(E9_p, E9_c)){
+    if (E9(E9_p, E9_c, &E9_t)){
         char op[10];
         if (tk==TKIgual) strcpy(op,"=");
         else if (tk==TKDiferente) strcpy(op,"<>");
@@ -1374,10 +1501,11 @@ int E8(char E8_p[MAX_COD], char E8_c[MAX_COD]){
 		
 				getToken();
 				//todo E1 mesmo ou E9 ??
-				if (E1(E2_p, E2_c)){
+				if (E1(E2_p, E2_c, &E2_t)){
+					*E8_t = TKInt;
+
 					char E8L_p[MAX_COD];
 					geratemp(E8L_p);
-
 					sprintf(E8_c,"%s%s\t%s = %s %s %s\n",E9_c,E2_c,E8L_p,E9_p,op,E2_p);
 					strcpy(E8_p, E8L_p);
 					return 1;
@@ -1387,6 +1515,7 @@ int E8(char E8_p[MAX_COD], char E8_c[MAX_COD]){
         default:
             strcpy(E8_c, E9_c);
 			strcpy(E8_p, E9_p);
+			*E8_t = E9_t;
             return 1;
         }
     }
@@ -1394,11 +1523,12 @@ int E8(char E8_p[MAX_COD], char E8_c[MAX_COD]){
 }
 
 // E9 -> E10 > E11 | E10 < E11 | E10 >= E11 | E10 <= E11 | ?
-int E9(char E9_p[MAX_COD], char E9_c[MAX_COD]){
+int E9(char E9_p[MAX_COD], char E9_c[MAX_COD], int *E9_t){
     char E10_c[MAX_COD],E2_c[MAX_COD],E10_p[MAX_COD],E2_p[MAX_COD];
+	int E10_t, E2_t;
 
 	//todo mudar para E10
-    if (E11(E10_p, E10_c)){
+    if (E11(E10_p, E10_c, &E10_t)){
         char op[10];
         if 		(tk==TKMaior) strcpy(op,">");
         else if (tk==TKMenor) strcpy(op,"<");
@@ -1412,7 +1542,9 @@ int E9(char E9_p[MAX_COD], char E9_c[MAX_COD]){
 			case TKMenorIgual:
 		
 				getToken();
-				if (E11(E2_p, E2_c)){
+				if (E11(E2_p, E2_c, &E2_t)){					
+					*E9_t = TKInt;
+					
 					char E9L_p[MAX_COD];
 					geratemp(E9L_p);
 
@@ -1425,6 +1557,7 @@ int E9(char E9_p[MAX_COD], char E9_c[MAX_COD]){
         default:
             strcpy(E9_c, E10_c);
 			strcpy(E9_p, E10_p);
+			*E9_t = E10_t;
             return 1;
         }
     }
@@ -1470,15 +1603,18 @@ int E10Linha(char E10L_p[MAX_COD], char E10L_c[MAX_COD]){
 */
 
 //E11 -> E12 E11Linha
-int E11(char E11_p[MAX_COD], char E11_c[MAX_COD]){
+int E11(char E11_p[MAX_COD], char E11_c[MAX_COD], int *E11_t){
 	char E12_p[MAX_COD],E12_c[MAX_COD],E11L_hp[MAX_COD],E11L_sp[MAX_COD],E11L_hc[MAX_COD],E11L_sc[MAX_COD];
-	
-	if(E12(E12_p, E12_c)){
+	int E12_t, E11L_ht, E11L_st;
+
+	if(E12(E12_p, E12_c, &E12_t)){
 		strcpy(E11L_hc,E12_c);
         strcpy(E11L_hp,E12_p);
-		if(E11Linha(E11L_hp, E11L_sp, E11L_hc, E11L_sc)){
+		E11L_ht = E12_t;
+		if(E11Linha(E11L_hp, E11L_sp, E11L_hc, E11L_sc, &E11L_ht, &E11L_st)){
 			strcpy(E11_c,E11L_sc);
             strcpy(E11_p,E11L_sp);
+			*E11_t = E11L_st;
 			return 1;
 		}
 		else{return 0;}
@@ -1487,19 +1623,23 @@ int E11(char E11_p[MAX_COD], char E11_c[MAX_COD]){
 }
 
 //E11Linha -> + E12 E11Linha | - E12 E11Linha | ?
-int E11Linha(char E11L_hp[MAX_COD], char E11L_sp[MAX_COD], char E11L_hc[MAX_COD], char E11L_sc[MAX_COD]){
+int E11Linha(char E11L_hp[MAX_COD], char E11L_sp[MAX_COD], char E11L_hc[MAX_COD], char E11L_sc[MAX_COD], int *E11L_ht, int *E11L_st){
 	char E12_c[MAX_COD], E11L1_hc[10000], E11L1_sc[MAX_COD], E12_p[MAX_COD], E11L1_hp[MAX_COD], E11L1_sp[MAX_COD];
+	int E12_st, E11L1_ht, E11L1_st;
 
 	if(tk == TKSoma){// +
 		getToken();
-		if(E12(E12_p, E12_c)){
+		if(E12(E12_p, E12_c, &E12_st)){
+
+			E11L1_ht = getTipo(*E11L_ht, E12_st);
 
 			geratemp(E11L1_hp);
             sprintf(E11L1_hc,"%s%s\t%s = %s+%s\n", E11L_hc, E12_c, E11L1_hp, E11L_hp, E12_p);
 
-			if(E11Linha(E11L1_hp, E11L1_sp, E11L1_hc, E11L1_sc)){
+			if(E11Linha(E11L1_hp, E11L1_sp, E11L1_hc, E11L1_sc, &E11L1_ht, &E11L1_st)){
 				strcpy(E11L_sp, E11L1_sp);
                 strcpy(E11L_sc, E11L1_sc);
+				*E11L_st = E11L1_st;
 				return 1;
 			}
 			else{return 0;}
@@ -1508,12 +1648,15 @@ int E11Linha(char E11L_hp[MAX_COD], char E11L_sp[MAX_COD], char E11L_hc[MAX_COD]
 	}
 	else if(tk == TKMenos){// -
 		getToken();
-		if(E12(E12_p, E12_c)){
+		if(E12(E12_p, E12_c, &E12_st)){
+			E11L1_ht = getTipo(*E11L_ht, E12_st);
+
 			geratemp(E11L1_hp);
             sprintf(E11L1_hc,"%s%s\t%s = %s-%s\n", E11L_hc, E12_c, E11L1_hp, E11L_hp, E12_p);
-			if(E11Linha(E11L1_hp, E11L1_sp, E11L1_hc, E11L1_sc)){
+			if(E11Linha(E11L1_hp, E11L1_sp, E11L1_hc, E11L1_sc, &E11L1_ht, &E11L1_st)){
 				strcpy(E11L_sp, E11L1_sp);
                 strcpy(E11L_sc, E11L1_sc);
+				*E11L_st = E11L1_st;
 				return 1;
 			}
 			else{return 0;}
@@ -1522,20 +1665,24 @@ int E11Linha(char E11L_hp[MAX_COD], char E11L_sp[MAX_COD], char E11L_hc[MAX_COD]
 	}
 	strcpy(E11L_sp,E11L_hp);
     strcpy(E11L_sc,E11L_hc);
+	*E11L_st = *E11L_ht;
 	return 1;
 }
 
 //E12 -> E13 E12Linha
-int E12(char E12_p[MAX_COD], char E12_c[MAX_COD]){
+int E12(char E12_p[MAX_COD], char E12_c[MAX_COD], int *E12_t){
 	char E13_c[MAX_COD],E13_p[MAX_COD],E12L_hp[MAX_COD],E12L_sp[MAX_COD],E12L_hc[MAX_COD],E12L_sc[MAX_COD];
+	int E13_t, E12L_ht, E12L_st;
 
-	if(E13(E13_p, E13_c)){
+	if(E13(E13_p, E13_c, &E13_t)){
 		strcpy(E12L_hc,E13_c);
         strcpy(E12L_hp,E13_p);
+		E12L_ht = E13_t;
 
-		if(E12Linha(E12L_hp, E12L_sp, E12L_hc, E12L_sc)){
+		if(E12Linha(E12L_hp, E12L_sp, E12L_hc, E12L_sc, &E12L_ht, &E12L_st)){
 			strcpy(E12_c,E12L_sc);
             strcpy(E12_p,E12L_sp);
+			*E12_t = E12L_st;
 			return 1;
 		}
 		else{return 0;}
@@ -1544,19 +1691,22 @@ int E12(char E12_p[MAX_COD], char E12_c[MAX_COD]){
 }
 
 //E12Linha -> * E13 E12Linha | / E13 E12Linha | % E13 E12Linha | ?
-int E12Linha(char E12L_hp[MAX_COD], char E12L_sp[MAX_COD], char E12L_hc[MAX_COD],char E12L_sc[MAX_COD]){
-	char E13_p[MAX_COD], E13_c[MAX_COD],E12L1_hc[10000],E12L1_sc[MAX_COD],E12L1_hp[MAX_COD],E12L1_sp[MAX_COD];
+int E12Linha(char E12L_hp[MAX_COD], char E12L_sp[MAX_COD], char E12L_hc[MAX_COD],char E12L_sc[MAX_COD], int *E12L_ht, int *E12L_st){
+	char E13_p[MAX_COD],E13_c[MAX_COD],E12L1_hc[10000],E12L1_sc[MAX_COD],E12L1_hp[MAX_COD],E12L1_sp[MAX_COD];
+	int E13_st, E12L1_ht, E12L1_st;
 
 	if(tk == TKProd){// *
 		getToken();
-		if(E13(E13_p, E13_c)){
-			
+		if(E13(E13_p, E13_c, &E13_st)){			
+			E12L1_ht = getTipo(*E12L_ht, E13_st);
+
 			geratemp(E12L1_hp);
             sprintf(E12L1_hc,"%s%s\t%s = %s*%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
 
-			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc)){
+			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc, &E12L1_ht, &E12L1_st)){
 				strcpy(E12L_sp,E12L1_sp);
                 strcpy(E12L_sc,E12L1_sc);
+				*E12L_st = E12L1_st;
 				return 1;
 			}
 			else{return 0;}
@@ -1565,40 +1715,39 @@ int E12Linha(char E12L_hp[MAX_COD], char E12L_sp[MAX_COD], char E12L_hc[MAX_COD]
 	}
 	else if(tk == TKDivisao){// /
 		getToken();
-		if(E13(E13_p, E13_c)){
+		if(E13(E13_p, E13_c, &E13_st)){
+			E12L1_ht = getTipo(*E12L_ht, E13_st);
 			
 			geratemp(E12L1_hp);
             sprintf(E12L1_hc,"%s%s\t%s = %s/%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
 
-			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc)){
+			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc, &E12L1_ht, &E12L1_st)){
 				strcpy(E12L_sp,E12L1_sp);
                 strcpy(E12L_sc,E12L1_sc);
+				*E12L_st = E12L1_st;
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else if(tk == TKResto){// %
-
-		//todo ver como verifica se é inteiro
-		// verificar se é inteiro
-		//E12L_hp;
-		//
-
+	else if(tk == TKResto){// %		
 		getToken();
-		if(E13(E13_p, E13_c)){
-			
-			// verificar se é inteiro
-			//E13_p;
-			//
+		if(E13(E13_p, E13_c, &E13_st)){		
+			E12L1_ht = getTipo(*E12L_ht, E13_st);
+
+			if(E12L1_ht != TKInt){
+				printf("Erro: Operador de %% só é possivel com valores inteiros\n");
+				erro = 1;
+			}
 
 			geratemp(E12L1_hp);
             sprintf(E12L1_hc,"%s%s\t%s = %s%%%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
 
-			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc)){
+			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc, &E12L1_ht, &E12L1_st)){
 				strcpy(E12L_sp,E12L1_sp);
                 strcpy(E12L_sc,E12L1_sc);
+				*E12L_st = E12L1_st;
 				return 1;
 			}
 			else{return 0;}
@@ -1608,46 +1757,47 @@ int E12Linha(char E12L_hp[MAX_COD], char E12L_sp[MAX_COD], char E12L_hc[MAX_COD]
 	
 	strcpy(E12L_sp,E12L_hp);
     strcpy(E12L_sc,E12L_hc);
+	*E12L_st = *E12L_ht;
 	return 1;
 }
 
 //E13 -> ++ E13 | -- E13 | ! E13 | E14
-int E13(char E13_p[MAX_COD], char E13_c[MAX_COD]){
+int E13(char E13_p[MAX_COD], char E13_c[MAX_COD], int *E13_t){
 	if(tk == TKDuploMais){// ++
 		getToken();
-		if(E13(E13_p, E13_c)){
+		if(E13(E13_p, E13_c, E13_t)){
 			return 1;
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
 	else if(tk == TKDuploMenos){// --
 		getToken();
-		if(E13(E13_p, E13_c)){
+		if(E13(E13_p, E13_c, E13_t)){
 			return 1;
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
 	else if(tk == TKNegacao){// !
 		getToken();
-		if(E13(E13_p, E13_c)){
+		if(E13(E13_p, E13_c, E13_t)){
 			return 1;
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else if(E14(E13_p, E13_c)){
+	else if(E14(E13_p, E13_c, E13_t)){
 		return 1;
 	}
 	else{return 0;}
 }
 
 //E14 -> id | id ++ | id -- | id ( CallFuncParam ) | inteiro | flutuante | ( E )
-int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
+int E14(char E14_p[MAX_COD], char E14_c[MAX_COD], int *E14_t){
 	char E14L_c[MAX_COD],E14L_p[MAX_COD];
 
 	if(tk == TKId){// id
 		strcpy(E14_c, "");
         strcpy(E14_p, lex);
-
+		*E14_t = getTipoDecVarEscopo(E14_p);
 		isVarDec(lex);
 
 		getToken();
@@ -1685,14 +1835,14 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 		}
 		else if(tk == TKAbreColchetes){			
 			getToken();
-			if (E1(E14L_p, E14L_c)){
+			if (E0(E14L_p, E14L_c)){
 				if(tk == TKFechaColchetes){
 					getToken();
 					// Bidimencional
 					if(tk == TKAbreColchetes){
 						char E14L2_c[MAX_COD],E14L2_p[MAX_COD];
 						getToken();
-						if (E1(E14L2_p, E14L2_c)){
+						if (E0(E14L2_p, E14L2_c)){
 							if(tk == TKFechaColchetes){
 								getToken();
 								//todo setar qtd de colunas da matriz
@@ -1732,6 +1882,7 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 	else if(tk == TKInteiro){// INTEIRO
 		geratemp(E14_p);
         sprintf(E14_c,"\t%s = %s\n",E14_p,lex);
+		*E14_t = TKInt;
 
 		getToken();
 		return 1;
@@ -1739,6 +1890,7 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 	else if(tk == TKFlutuante){// FLUTUANTE
 		geratemp(E14_p);
         sprintf(E14_c,"\t%s = %s\n",E14_p,lex);
+		*E14_t = TKFloat;
 
 		getToken();
 		return 1;
@@ -1746,8 +1898,7 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD]){
 	else if(tk == TKAbreParenteses){// (
 		//char E14L_c[MAX_COD],E14L_p[MAX_COD];
 		getToken();
-		//todo: mudar pro E1
-		if (E1(E14L_p, E14L_c)){
+		if (E0(E14L_p, E14L_c)){
 			if(tk == TKFechaParenteses){// )
 				getToken();
 				strcpy(E14_c,E14L_c);

@@ -1,6 +1,7 @@
-float a,b;
+int i;
 
-a = 3;
+float f;
 
-while(1)
-continue;
+i = 3;
+
+f = i % 2;
