@@ -1,7 +1,13 @@
-int i;
+int i, a, b;
 
 float f;
 
-i = 3;
+while(1){
+    if(2){
+        continue;
+    }
+    break;
+}
 
-f = i % 2;
+q = 3;
+break;

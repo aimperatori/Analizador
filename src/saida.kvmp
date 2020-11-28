@@ -1,0 +1,14 @@
+LB000:
+	T000 = 1
+	if T000 = 1 goto LB001
+	goto LB002
+LB001:
+	T001 = 2
+	if T001 = 1 goto LB004
+	goto LB003
+LB004:
+	goto LB000
+LB003:
+	goto LB002
+	goto LB000
+LB002:

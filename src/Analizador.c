@@ -72,16 +72,13 @@
 #define	TKAbreColchetes 72
 #define TKFechaColchetes 73
 
-#define false 0
-#define true 1
-
 #define MAX_COD 1000
 
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 int pos = 0;
-int lin=1, col=1, posl, erro=false;
+int lin=1, col=1, posl, erro=0;
 int tk, tipo_numero;
 char exp1[200],lex[20];
 char tk_name[50];
@@ -464,8 +461,8 @@ void decVarSetNome(char nome[MAX_COD]){
 	}
 	else{
 		#ifdef SEMANTICO
-		printf("Erro: redeclaracao de %s. Linha: %d Coluna: %d\n", nome, lin, col);
-		erro = true;
+		printf("Erro: redeclaracao de '%s'. Linha: %d Coluna: %d\n", nome, lin, col);
+		erro = 1;
 		#endif
 	}
 }
@@ -474,8 +471,8 @@ int isVarDec(char nome[]){
 	int pos;
 	if(!verificaDecVarGeral(nome)){
 		#ifdef SEMANTICO
-		printf("Erro: variavel %s nao declarada. Linha: %d Coluna: %d\n", nome, lin, col);	
-		erro = true;
+		printf("Erro: variavel '%s' nao declarada. Linha: %d Coluna: %d\n", nome, lin, col);	
+		erro = 1;
 		#endif
 	}
 }
@@ -486,10 +483,7 @@ int getTipo(int tipo1, int tipo2){
 		return TKInt;
 	else
 		return TKFloat;
-
-	return 0;
 }
-
 
 //  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> FIM SEMANTICO <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -549,7 +543,7 @@ int Com_Composto(char [],char [],char []);
 int Com(char[],char[],char[]);
 
 void F_Printf_Erro(int x){
-	erro = true;
+	erro = 1;
 	char string[30];
 
 	switch(x){
@@ -869,7 +863,7 @@ int DoWhile(char dowhile_c[], char lbreak[], char lcontinue[]){
 	else{return 0;}
 }
 
-//For -> for ( E0 ; REL ; R1 ) Com
+//For -> for ( E0 ; REL ; E0 ) Com
 int For(char for_c[], char lbreak[], char lcontinue[]){
 	char Rel1_c[MAX_COD],Rel1_p[MAX_COD],Rel2_c[MAX_COD],Rel2_p[MAX_COD],Rel3_c[MAX_COD],Rel3_p[MAX_COD],Com_c[MAX_COD];
     char labelini[10],labeltrue[10],labelfim[10],labelinc[10];
@@ -1110,6 +1104,7 @@ int Else(char else_c[MAX_COD], char lbreak[], char lcontinue[], char labelelse[M
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> INICIO EXPRESSOES <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+//Rel -> E0
 int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
 	char E1_c[MAX_COD],E2_c[MAX_COD],E1_p[MAX_COD],E2_p[MAX_COD];
 
@@ -1151,6 +1146,7 @@ int E0(char E0_p[MAX_COD],char E0_c[MAX_COD]){
 	else{return 0;}
 }
 
+//E0Linha -> , E1 | ?
 int E0Linha(char E0L_hp[MAX_COD], char E0L_sp[MAX_COD], char E0L_hc[MAX_COD], char E0L_sc[MAX_COD], int *E0L_ht, int *E0L_st){
 	char E1_c[MAX_COD], E0L1_hc[10000], E0L1_sc[MAX_COD], E1_p[MAX_COD], E0L1_hp[MAX_COD], E0L1_sp[MAX_COD];
 	int E1_st, E0L1_ht, E0L1_st;
@@ -1160,11 +1156,17 @@ int E0Linha(char E0L_hp[MAX_COD], char E0L_sp[MAX_COD], char E0L_hc[MAX_COD], ch
 		if(E1(E1_p, E1_c, &E1_st)){
 			//E0L1_ht = getTipo(*E0L_ht, E1_st);
 
-			sprintf(E0L_sc,"%s%s",E0L_hc,E1_c);
-			strcpy(E0L_sp,E1_p);
-			*E0L_st = E1_st;
-			return 1;
+			sprintf(E0L_hc,"%s%s",E0L_hc,E1_c);
+
+			if(E0Linha(E0L1_hp, E0L1_sp, E0L_hc, E0L1_sc,&E0L1_ht,&E0L1_st)){
+				strcpy(E0L_sp, E0L1_sp);
+                strcpy(E0L_sc, E0L1_sc);
+				*E0L_st = E0L1_st;
+				return 1;
+			}
+			else{return 0;}
 		}
+		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
 	else{
 		strcpy(E0L_sp,E0L_hp);
@@ -1174,7 +1176,7 @@ int E0Linha(char E0L_hp[MAX_COD], char E0L_sp[MAX_COD], char E0L_hc[MAX_COD], ch
 	}
 }
 
-//E1 -> E2 = E1 | E2 += E1 | E2 -= E1 | E2 *= E1 | E2 /= E1 | E2 %= E1 | E2
+//E1 -> E2 = E1 | E2 += E1 | E2 -= E1 | E2 *= E1 | E2 /= E1 | E2 %= E1
 int E1(char E1_p[MAX_COD],char E1_c[MAX_COD], int *E1_t){
 	char A1_p[MAX_COD],A1_c[MAX_COD],E1L_c[MAX_COD],E1L_p[MAX_COD],E1L1_hp[MAX_COD];
 	int E2_t, E12_t;
@@ -1244,7 +1246,6 @@ int E1(char E1_p[MAX_COD],char E1_c[MAX_COD], int *E1_t){
 					erro = 1;
 				}
 
-				//TODO Acao semantiva, verificar se ambos sao int
 				geratemp(E1L1_hp);
 				sprintf(E1_c,"%s%s\t%s = %s%%%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
 				strcpy(E1_p, E1L_p);
@@ -1319,7 +1320,6 @@ int E3Linha(char E3L_hp[MAX_COD], char E3L_sp[MAX_COD], char E3L_hc[MAX_COD], ch
 			E3L1_ht = TKInt;
 
 			char labeltrue[10],labelfim[10];
-
 			geralabel(labeltrue);
 			geralabel(labelfim);
 			geratemp(E3L1_hp);
@@ -1379,7 +1379,6 @@ int E4Linha(char E4L_hp[MAX_COD], char E4L_sp[MAX_COD], char E4L_hc[MAX_COD], ch
 			E4L1_ht = TKInt;
 
 			char labeltrue[10],labelfim[10];
-
 			geralabel(labeltrue);
 			geralabel(labelfim);
 			geratemp(E4L1_hp);
@@ -1485,14 +1484,14 @@ int E7Linha(){
 }
 */
 
-// E8 -> E9 == E1 | E9 != E1 | ?
+// E8 -> E9 == E9 | E9 != E9 | ?
 int E8(char E8_p[MAX_COD], char E8_c[MAX_COD], int *E8_t){
     char E9_c[MAX_COD],E2_c[MAX_COD],E9_p[MAX_COD],E2_p[MAX_COD];
 	int E9_t, E2_t;
 
     if (E9(E9_p, E9_c, &E9_t)){
         char op[10];
-        if (tk==TKIgual) strcpy(op,"=");
+        if (tk==TKIgual) strcpy(op,"==");
         else if (tk==TKDiferente) strcpy(op,"<>");
 
 		switch (tk){
@@ -1500,8 +1499,7 @@ int E8(char E8_p[MAX_COD], char E8_c[MAX_COD], int *E8_t){
 			case TKDiferente:
 		
 				getToken();
-				//todo E1 mesmo ou E9 ??
-				if (E1(E2_p, E2_c, &E2_t)){
+				if (E9(E2_p, E2_c, &E2_t)){
 					*E8_t = TKInt;
 
 					char E8L_p[MAX_COD];
@@ -1530,8 +1528,8 @@ int E9(char E9_p[MAX_COD], char E9_c[MAX_COD], int *E9_t){
 	//todo mudar para E10
     if (E11(E10_p, E10_c, &E10_t)){
         char op[10];
-        if 		(tk==TKMaior) strcpy(op,">");
-        else if (tk==TKMenor) strcpy(op,"<");
+        if 		(tk==TKMaior) 	   strcpy(op,">");
+        else if (tk==TKMenor) 	   strcpy(op,"<");
         else if (tk==TKMaiorIgual) strcpy(op,">=");
         else if (tk==TKMenorIgual) strcpy(op,"<=");
 
@@ -1542,12 +1540,12 @@ int E9(char E9_p[MAX_COD], char E9_c[MAX_COD], int *E9_t){
 			case TKMenorIgual:
 		
 				getToken();
+				//todo mudar para E10
 				if (E11(E2_p, E2_c, &E2_t)){					
 					*E9_t = TKInt;
 					
 					char E9L_p[MAX_COD];
 					geratemp(E9L_p);
-
 					sprintf(E9_c,"%s%s\t%s = %s %s %s\n",E10_c,E2_c,E9L_p,E10_p,op,E2_p);
 					strcpy(E9_p, E9L_p);
 					return 1;
@@ -1630,7 +1628,6 @@ int E11Linha(char E11L_hp[MAX_COD], char E11L_sp[MAX_COD], char E11L_hc[MAX_COD]
 	if(tk == TKSoma){// +
 		getToken();
 		if(E12(E12_p, E12_c, &E12_st)){
-
 			E11L1_ht = getTipo(*E11L_ht, E12_st);
 
 			geratemp(E11L1_hp);
@@ -1663,10 +1660,12 @@ int E11Linha(char E11L_hp[MAX_COD], char E11L_sp[MAX_COD], char E11L_hc[MAX_COD]
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	strcpy(E11L_sp,E11L_hp);
-    strcpy(E11L_sc,E11L_hc);
-	*E11L_st = *E11L_ht;
-	return 1;
+	else{
+		strcpy(E11L_sp,E11L_hp);
+		strcpy(E11L_sc,E11L_hc);
+		*E11L_st = *E11L_ht;
+		return 1;
+	}
 }
 
 //E12 -> E13 E12Linha
@@ -1754,11 +1753,12 @@ int E12Linha(char E12L_hp[MAX_COD], char E12L_sp[MAX_COD], char E12L_hc[MAX_COD]
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	
-	strcpy(E12L_sp,E12L_hp);
-    strcpy(E12L_sc,E12L_hc);
-	*E12L_st = *E12L_ht;
-	return 1;
+	else{
+		strcpy(E12L_sp,E12L_hp);
+		strcpy(E12L_sc,E12L_hc);
+		*E12L_st = *E12L_ht;
+		return 1;
+	}
 }
 
 //E13 -> ++ E13 | -- E13 | ! E13 | E14
@@ -1915,7 +1915,7 @@ int E14(char E14_p[MAX_COD], char E14_c[MAX_COD], int *E14_t){
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> FIM EXPRESSOES <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
+// Break -> break ;
 int Break(char Break_c[MAX_COD], char lbreak[]){
 	if(tk==TKBreak){
 		getToken();
@@ -1931,6 +1931,7 @@ int Break(char Break_c[MAX_COD], char lbreak[]){
 	else return 0;
 }
 
+// Continue -> continue ;
 int Continue(char Continue_c[MAX_COD], char lcontinue[]){
 	if(tk==TKContinue){
 		getToken();
@@ -1946,6 +1947,7 @@ int Continue(char Continue_c[MAX_COD], char lcontinue[]){
 	else return 0;
 }
 
+// Exp -> E ;
 int Exp(char Exp_c[MAX_COD]){
     char E_c[MAX_COD];
 	
@@ -1957,8 +1959,10 @@ int Exp(char Exp_c[MAX_COD]){
         }
 		else{F_Printf_Erro(TKPontoEVirgula);return 0;}
     }
+	else return 0;
 }
 
+// Com_Composto -> { Com }
 int Com_Composto(char Comp_c[], char lbreak[], char lcontinue[]){
     char Com_C[MAX_COD];
 
@@ -1977,6 +1981,7 @@ int Com_Composto(char Comp_c[], char lbreak[], char lcontinue[]){
 	else{return 0;}
 }
 
+// Com -> If | DecGeral | While | DoWhile | For | Exp | Break | Continue | Com_Composto | ?
 int Com(char Com_c[], char lbreak[], char lcontinue[]) {
 
     if(If(Com_c, lbreak, lcontinue)) return 1;
@@ -2038,7 +2043,7 @@ int main(int argc, char *argv[]){
 
 	#ifdef DEBUG
 	// DEBUG SEMANTICO
-	for(int i =0;i<=curVarGlobal;i++){
+	for(int i=0;i<=curVarGlobal;i++){
 		printf("%d - %s - %d %d\n", varGlobal[i].tipo, varGlobal[i].nome, varGlobal[i].linha, varGlobal[i].coluna);
 	}
 	#endif
