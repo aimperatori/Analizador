@@ -1,0 +1,34 @@
+a=0;
+
+b=1;
+
+for (i=0;i<10;i++)
+{
+    t=a+b;
+
+    a=b;
+
+    b=t;
+}
+
+-----------
+
+T000 = 0
+	a=T000
+	T001 = 1
+	b=T001
+	T002 = 0
+	i=T002
+LB000:
+	T003 = 10
+	if i < T003 goto LB001
+	goto LB002
+LB001:
+	T004=a+b
+	t=T004
+	a=b
+	b=t
+	goto LB000
+LB002:
+Reconheceu OK!
+

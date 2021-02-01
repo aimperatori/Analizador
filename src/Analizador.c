@@ -42,7 +42,7 @@
 #define TKDiferente 42 // 42
 #define TKIgual 43 // 43
 #define TKAnd 44 // 44
-#define TKOr 44 // 44
+#define TKOr 45 // 45
 #define TKRestoIgual 46 // 46
 #define TKInterogacao 47 // 47
 #define TKXor 48 // XOR Para Bits
@@ -69,15 +69,16 @@
 #define TKAsm 69
 #define PARAMETRO 70
 #define TKFlutuante 71
+#define	TKAbreColchetes 72
+#define TKFechaColchetes 73
 
-#define false 0
-#define true 1
+#define MAX_COD 1000
 
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 int pos = 0;
-int lin=1, col=1, posl, erro=false;
+int lin=1, col=1, posl, erro=0;
 int tk, tipo_numero;
 char exp1[200],lex[20];
 char tk_name[50];
@@ -96,10 +97,10 @@ char lista[][30] = {"", "TKId ", "TKVoid ", "TKInt ",
 		"TKNegacao ", "TKContinue ", "TKElse ", "TKAuto ", "TKEnum ",
 		"TKConst ", "TKExtern ", "TKGoto ", "TKRegister ", "TKSigned ",
 		"TKSizeof ", "TKStatic ", "TKTypedef ", "TKUnsigned ", "TKVolatile ",
-		"TKAsm ", "PARAMETRO ", "TKFlutuante " };
+		"TKAsm ", "PARAMETRO ", "TKFlutuante ", "TKAbreColchetes ", "TKFechaColchetes" };
 
 char c;
-FILE *in, *out;
+FILE *in, *outLex, *outC3E;
 
 //  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> INICIO LEXICO <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -142,22 +143,19 @@ struct pal_res lista_pal[]={
 int palavra_reservada(char lex[]) {
 	int postab=0;
 	while (strcmp("fimtabela",lista_pal[postab].palavra)!=0){
-	   if (strcmp(lex,lista_pal[postab].palavra)==0)
+	    if (strcmp(lex,lista_pal[postab].palavra)==0)
 		  return lista_pal[postab].tk;
-	   postab++;
+	    postab++;
 	}
 	return TKId;
 }
 
 void proxC() {
 	if (feof(in)) {
-		c=-1;
-//		printf("Chegou no fim de arquivo!\n");
+		c = -1;
 	}
-
 	// LE PROXIMO CARACTER DO ARQUIVO
-	fread(&c, 1, 1, in);
-//	printf("Leu caracter %c\n",c);
+	fscanf(in, "%c", &c);
 }
 
 void getToken() {
@@ -166,12 +164,12 @@ void getToken() {
 		posl=0,
 		tipo_numero=0;
 
-	// GRAVA DADOS LEXICOS NO ARQUIVO "Saida.lex"
-	if(tk) fprintf(out, "%25s %15s %7d %8d\n", lista[tk],lex,lin,col-posl);
+	// GRAVA DADOS LEXICOS NO ARQUIVO
+	if(tk) fprintf(outLex, "%25s %15s %7d %8d\n", lista[tk],lex,lin,col-posl);
 
 	while (!fim) {
-//		printf("char= %c col= %d tk= %d\n",c,col,tk);
-//		printf("lexico %s\n",lex);
+		//printf("char= %c col= %d tk= %d\n",c,col,tk);
+		//printf("lexico %s\n",lex);
 
 		// VERIFICA SE c ESTA COM TK DE FIM DE ARQUIVO
 		if(c==-1) {
@@ -184,7 +182,7 @@ void getToken() {
 			case 0: if ((c>='a' && c<='z') || (c>='A' && c<='Z') || c=='_')
 					{proxC();col++;estado=1;break;}
 					if ((c>='0' && c<='9') || c=='.'){
-						estado=2;col++;break;}
+						proxC();estado=2;col++;break;}
 					if (c=='='){
 						proxC();col++;
 						if(c=='='){
@@ -283,12 +281,14 @@ void getToken() {
 					if (c=='%'){
 						proxC();col++;
 						if(c=='='){lex[posl]='\0';proxC();col++;tk=TKRestoIgual;return;
-						}else{lex[posl]='\0';proxC();tk=TKResto;return;}
+						}else{lex[posl]='\0';tk=TKResto;return;}
 					}
 					if (c=='('){lex[posl]='\0';proxC();col++;tk=TKAbreParenteses;return;}
 					if (c==')'){lex[posl]='\0';proxC();col++;tk=TKFechaParenteses;return;}
 					if (c=='{'){lex[posl]='\0';proxC();col++;tk=TKAbreChaves;return;}
 					if (c=='}'){lex[posl]='\0';proxC();col++;tk=TKFechaChaves;return;}
+					if (c=='['){lex[posl]='\0';proxC();col++;tk=TKAbreColchetes;return;}
+					if (c==']'){lex[posl]='\0';proxC();col++;tk=TKFechaColchetes;return;}
 					if (c==','){lex[posl]='\0';proxC();col++;tk=TKVirgula;return;}
 					if (c==';'){lex[posl]='\0';proxC();col++;tk=TKPontoEVirgula;return;}
 					if (c==':'){lex[posl]='\0';proxC();col++;tk=TKDoisPontos;return;}
@@ -298,7 +298,7 @@ void getToken() {
 					if (c==' ' || c=='\t' || c=='\r'){proxC();posl--;col++;break;}
 					if (c=='\n') {proxC();col=0;posl--;lin++;break;}
 					if (c=='\0') {tk=-1;return;}
-					printf("Erro léxico: encontrou o caracter %c na posição %d",c,col);
+					printf("Erro lexico: encontrou o caracter %c na posicao %d",c,col);
 					break;
 			case 1: if ((c>='a' && c<='z') || (c>='A' && c<='Z') || c=='_' || (c>='0' && c<='9')) {proxC();col++;break;}
 					lex[--posl]='\0';
@@ -307,33 +307,198 @@ void getToken() {
 			case 2: if(c>='0' && c<='9') {
 						proxC();col++;break;
 					}else if(c=='.') {
-						 proxC();col++;
-						 tipo_numero=1;
-						 break;
+						proxC();col++;
+						tipo_numero=1;
+						break;
 					}
 					lex[--posl]='\0';
 					if(tipo_numero==1) tk=TKFlutuante; else tk=TKInteiro;
 					return;
 		}// switch
 	}// while
-}// função
+}// funcao
 
 //  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> FIM LEXICO <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-int G();
-int E();
-int DecGeral();
+//  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> INICIO SEMANTICO <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+#define TAM_PILHA 10
+
+int topo = 0;
+int curVarGlobal = -1;
+int curVarLocal[TAM_PILHA];
+
+struct DecVar {
+	int tipo;
+	char nome[50];
+	int linha;
+	int coluna;
+} typedef DecVar;
+
+DecVar varGlobal[100];
+DecVar varLocal[TAM_PILHA][100];
+
+void empilha(){
+	curVarLocal[++topo] = -1;
+}
+
+void desempilha(){
+	curVarLocal[topo--] = -1;
+}
+
+void incVar(){
+	// 0 = GLOBAL
+	if(topo == 0){
+		curVarGlobal++;
+	}
+	else{
+		curVarLocal[topo]++;
+	}
+}
+
+int getTipoDecVar(DecVar decVar[], char nome[], int numVar){
+	int i;
+
+	for(i=0; i <= numVar; i++){
+		if(strcmp(decVar[i].nome, nome) == 0){
+			return decVar[i].tipo;
+		}
+	}
+
+	return 0;
+}
+
+int getTipoDecVarEscopo(char nome[]){
+	// 0 = GLOBAL
+	if(topo == 0){
+		return getTipoDecVar(varGlobal, nome, curVarGlobal);
+	}
+	else{
+		return getTipoDecVar(varLocal[topo], nome, curVarLocal[topo]-1);
+	}
+}
+
+int verificaDecVar(DecVar decVar[], char nome[], int numVar){
+	int i;
+
+	for(i=0; i <= numVar; i++){
+		if(strcmp(decVar[i].nome, nome) == 0){
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+int verificaDecVarEscopo(char nome[]){
+	// 0 = GLOBAL
+	if(topo == 0){
+		return verificaDecVar(varGlobal, nome, curVarGlobal);
+	}
+	else{
+		return verificaDecVar(varLocal[topo], nome, curVarLocal[topo]-1);
+	}
+}
+
+int verificaDecVarGeral(char nome[]){
+	int aux = topo;
+
+	while(aux){
+		if(verificaDecVar(varLocal[aux], nome, curVarLocal[aux]))
+			return 1;
+		
+		aux--;
+	}
+
+	if(verificaDecVar(varGlobal, nome, curVarGlobal))
+		return 1;
+
+	return 0;
+}
+
+void decVarSetLinhaColuna(){
+	// 0 = GLOBAL
+	if(topo == 0){
+		varGlobal[curVarGlobal].linha = lin;
+		varGlobal[curVarGlobal].coluna = col;
+	}
+	else{
+		varLocal[topo][curVarLocal[topo]].linha = lin;
+		varLocal[topo][curVarLocal[topo]].coluna = col;
+	}
+}
+
+void decVarSetTipo(int tipo){
+	// 0 = GLOBAL
+	if(topo == 0){
+		varGlobal[curVarGlobal].tipo = tipo;
+	}
+	else{
+		varLocal[topo][curVarLocal[topo]].tipo = tipo;
+	}
+}
+
+int decVarGetTipo(){
+	// 0 = GLOBAL
+	if(topo == 0){
+		return varGlobal[curVarGlobal].tipo;
+	}
+	else{
+		return varLocal[topo][curVarLocal[topo]].tipo;
+	}
+}
+
+void decVarSetNome(char nome[MAX_COD]){
+
+	if(!verificaDecVarEscopo(nome)){
+		if(topo == 0){
+			strcpy(varGlobal[curVarGlobal].nome, nome);
+		}
+		else{
+			strcpy(varLocal[topo][curVarLocal[topo]].nome, nome);
+		}
+		decVarSetLinhaColuna();
+	}
+	else{
+		#ifdef SEMANTICO
+		printf("Erro: redeclaracao de '%s'. Linha: %d Coluna: %d\n", nome, lin, col);
+		erro = 1;
+		#endif
+	}
+}
+
+int isVarDec(char nome[]){
+	int pos;
+	if(!verificaDecVarGeral(nome)){
+		#ifdef SEMANTICO
+		printf("Erro: variavel '%s' nao declarada. Linha: %d Coluna: %d\n", nome, lin, col);	
+		erro = 1;
+		#endif
+	}
+}
+
+// Retorna o tipo de retorno entre 2 tipos
+int getTipo(int tipo1, int tipo2){
+	if(tipo1 == TKInt && tipo2 == TKInt)
+		return TKInt;
+	else
+		return TKFloat;
+}
+
+//  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> FIM SEMANTICO <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+int DecGeral(char[]);
 int DecGeral2();
 int Dec1();
 int Dec2();
 int Declarator();
 int CallFuncParam();
 int CallFuncParam2();
-int While();
-int If();
-int Else();
-int For();
-int EV();
+int While(char[], char[],char[]);
+int DoWhile(char[], char[],char[]);
+int For(char[],char[],char[]);
+int If(char[],char[],char[]);
+int Else(char[],char[],char[],char[],char[]);
 int SwitchCase();
 int Cases();
 int BlocoCases();
@@ -343,7 +508,10 @@ int Parametro();
 int Parametro2();
 int Parametro2Linha();
 int BlocoComando();
+int Rel(char[], char[], char[]);
 int E();
+int E0();
+int E0Linha();
 int E1();
 int E2();
 int E3();
@@ -367,69 +535,75 @@ int E11Linha();
 int E12();
 int E12Linha();
 int E13();
-int E14();
+int E14(char[], char[], int *);
 int Return();
+void geralabel(char[]);
+void geratemp(char[]);
+int Com_Composto(char [],char [],char []);
+int Com(char[],char[],char[]);
 
 void F_Printf_Erro(int x){
-	erro = true;
-	char string[15];
+	erro = 1;
+	char string[30];
 
 	switch(x){
 		case TKId: 				strcpy(string,"identificador"); break;
 		case TKInt: 			strcpy(string,"identificador de tipo"); break;
 		case TKIf: 				strcpy(string,"anteriormente um if"); break;
-		case TKVirgula:			strcpy(string,"uma vírgula"); break;
+		case TKVirgula:			strcpy(string,"uma virgula"); break;
 		case TKDoisPontos:		strcpy(string,"dois pontos"); break;
 		case TKAbreParenteses: 	strcpy(string,"abrir parenteses"); break;
 		case TKFechaParenteses:	strcpy(string,"fechar parenteses"); break;
-		case TKAtrib:			strcpy(string,"uma atribuição"); break;
-		case TKPontoEVirgula:	strcpy(string,"um ponto e vírgula"); break;
+		case TKAtrib:			strcpy(string,"uma atribuicao"); break;
+		case TKPontoEVirgula:	strcpy(string,"um ponto e virgula"); break;
 		case TKAbreChaves:		strcpy(string,"abrir chaves"); break;
 		case TKFechaChaves:		strcpy(string,"fechar chaves"); break;
 		case TKCase:			strcpy(string,"um \"case\""); break;
 		case TKInteiro:			strcpy(string,"um numero"); break;
 		case TKFlutuante:		strcpy(string,"um numero"); break;
-		case TKExpressao:		strcpy(string,"uma expressão"); break;
+		case TKExpressao:		strcpy(string,"uma expressao"); break;
 		case PARAMETRO:			strcpy(string,"um parametro"); break;
+		case TKAbreColchetes:	strcpy(string,"abrir colchetes"); break;
+		case TKFechaColchetes:	strcpy(string,"fechar colchetes"); break;
+		case TKBreak:			strcpy(string,"\"break\" fora de iteracao"); break;
+		case TKContinue:		strcpy(string,"\"continue\" fora de iteracao"); break;
 
 		default: x=0;
 	}
 
-	if(x) printf("Erro: esperava %s, linha %d coluna %d\n", string, lin, col-posl);
-	else printf("Erro: não identificado linha %d coluna %d\n", lin, col-posl);
+	if(x==TKBreak || x==TKContinue) printf("Erro: %s, linha %d coluna %d\n", string, lin, col-posl);
+	else if(x) printf("Erro: esperava %s, linha %d coluna %d\n", string, lin, col-posl);
+	else  printf("Erro: nao identificado linha %d coluna %d\n", lin, col-posl);
+}
+
+void geralabel(char label[]){
+	static int numlabel = 0;
+	sprintf(label, "LB%03d", numlabel++);
+}
+
+void geratemp(char temp[]){
+	static int numtemp = 0;
+	sprintf(temp, "T%03d", numtemp++);
 }
 
 //Tipo -> void | short | int | long | float | double | char
-int Tipo(){
-	if(tk == TKVoid){// void
-		getToken();
-		return 1;
+int Tipo(int *dec_p){
+
+	switch (tk)	{
+		case TKVoid:
+		case TKShort:
+		case TKInt:
+		case TKLong:
+		case TKFloat:
+		case TKDouble:
+		case TKChar:
+
+			*dec_p = tk;
+			getToken();
+			return 1;	
+		default:
+			return 0;
 	}
-	else if(tk == TKShort){// short
-		getToken();
-		return 1;
-	}
-	else if(tk == TKInt){// int
-		getToken();
-		return 1;
-	}
-	else if(tk == TKLong){// long
-		getToken();
-		return 1;
-	}
-	else if(tk == TKFloat){// float
-		getToken();
-		return 1;
-	}
-	else if(tk == TKDouble){// double
-		getToken();
-		return 1;
-	}
-	else if(tk == TKChar){// char
-		getToken();
-		return 1;
-	}
-	else{return 0;}
 }
 
 //Parametro -> Parametro2 | ?
@@ -437,12 +611,14 @@ int Parametro(){
 	if (Parametro2()){
 		return 1;
 	}
-	else {return 1;}
+	else{return 1;}
 }
 
 //Parametro2 -> Tipo id Parametro2Linha
 int Parametro2(){
-	if(Tipo()){
+	int tipo_p;
+
+	if(Tipo(&tipo_p)){
 		if(tk == TKId){// id
 			getToken();
 			if (Parametro2Linha()){
@@ -467,14 +643,15 @@ int Parametro2Linha(){
 		}
 		else{F_Printf_Erro(PARAMETRO);return 0;}
 	}
-	else {return 1;}
+	else{return 1;}
 }
 
-//Return -> return EV ;
+/*
+//Return -> return R1 ;
 int Return(){
 	if(tk == TKReturn){// return
 		getToken();
-		if (EV()){
+		if (R1()){
 			if(tk == TKPontoEVirgula){// ;
 				getToken();
 				return 1;
@@ -485,13 +662,22 @@ int Return(){
 	}
 	else{return 0;}
 }
+*/
 
 //DecGeral -> Tipo id DecGeral2
-int DecGeral(){
-	if(Tipo()){
+int DecGeral(char DecGeral2_C[MAX_COD]){
+	int dec_p;
+	
+	if(Tipo(&dec_p)){
+		incVar();
+		decVarSetTipo(dec_p);
+
 		if(tk == TKId){// id
+
+			decVarSetNome(lex);
+
 			getToken();
-			if (DecGeral2()){
+			if (DecGeral2(DecGeral2_C, dec_p)){
 				return 1;
 			}
 			else{return 0;}
@@ -502,13 +688,13 @@ int DecGeral(){
 }
 
 //DecGeral2 -> ( Parametro ) BlocoComando | Dec1
-int DecGeral2(){
-	if(tk == TKAbreParenteses){// (
+int DecGeral2(char DecGeral2_C[MAX_COD], int dec_p){
+	if(tk == TKAbreParenteses){ // (
 		getToken();
 		if (Parametro()){
-			if(tk == TKFechaParenteses){// )
+			if(tk == TKFechaParenteses){ // )
 				getToken();
-				if (BlocoComando()){
+				if (Com(DecGeral2_C, "", "")){
 					return 1;
 				}
 				else{return 0;}
@@ -517,40 +703,40 @@ int DecGeral2(){
 		}
 		else{return 0;}
 	}
-	else if (Dec1()){
+	else if (Dec1(DecGeral2_C, dec_p)){
 		return 1;
 	}
 	else{return 0;}
 }
 
 //Dec1 -> = E Dec2 | Dec2
-int Dec1(){
+int Dec1(char Dec1_C[MAX_COD], int dec_p){
 	if(tk == TKAtrib){// =
 		getToken();
-		if (E()){
-			if (Dec2()){
+		if (E(Dec1_C)){
+			if (Dec2(Dec1_C, dec_p)){
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{return 0;}
 	}
-	else if (Dec2()){
+	else if (Dec2(Dec1_C, dec_p)){
 		return 1;
 	}
 	else{return 0;}
 }
 
 //Dec2 -> ; | , Declarator Dec2
-int Dec2(){
+int Dec2(char Dec2_C[MAX_COD], int dec_p){
 	if(tk == TKPontoEVirgula){// ;
 		getToken();
 		return 1;
 	}
 	else if(tk == TKVirgula){// ,
 		getToken();
-		if (Declarator()){
-			if (Dec2()){
+		if (Declarator(Dec2_C, dec_p)){
+			if (Dec2(Dec2_C, dec_p)){
 				return 1;
 			}
 			else{return 0;}
@@ -561,12 +747,17 @@ int Dec2(){
 }
 
 //Declarator -> id = E | id
-int Declarator(){
+int Declarator(char Declarator_C[MAX_COD], int dec_p){
 	if(tk == TKId){// id
+		// Adiciona declaracao na tabela de declaracoes
+		incVar();
+		decVarSetTipo(dec_p);
+		decVarSetNome(lex);
+
 		getToken();
 		if(tk == TKAtrib){// =
 			getToken();
-			if (E()){
+			if (E(Declarator_C)){
 				return 1;
 			}
 			else{F_Printf_Erro(TKExpressao);return 0;}
@@ -576,6 +767,7 @@ int Declarator(){
 	else{return 0;}
 }
 
+/*
 //CallFuncParam -> E CallFuncParam2 | ?
 int CallFuncParam(){
 	if(E()){
@@ -584,7 +776,7 @@ int CallFuncParam(){
 		}
 		else{return 0;}
 	}
-	else {return 1;}
+	else{return 1;}
 }
 
 //CallFuncParam2 -> , E CallFuncParam2 | ?
@@ -599,20 +791,28 @@ int CallFuncParam2(){
 		}
 		else{F_Printf_Erro(PARAMETRO);return 0;}
 	}
-	else {return 1;}
+	else{return 1;}
 }
+*/
 
+//While -> while ( Rel ) Com
+int While(char while_c[], char lbreak[], char lcontinue[]){
+	char Rel_c[MAX_COD],Rel_p[MAX_COD],Com_c[MAX_COD];
+    char labelwhile[10],labeltrue[10],labelfim[10];
 
-//While -> while ( E ) { G }
-int While(){
 	if(tk == TKWhile){
+		geralabel(labelwhile);
+		geralabel(labeltrue);
+		geralabel(labelfim);
 		getToken();
 		if (tk == TKAbreParenteses){
 			getToken();
-			if (E()){
+			if (Rel(Rel_c,labeltrue,labelfim)){
 				if (tk == TKFechaParenteses){
 					getToken();
-					if(BlocoComando()){
+					if(Com(Com_c, labelfim, labelwhile)){
+						sprintf(while_c,"%s:\n%s%s:\n%s\tgoto %s\n%s:\n",
+                                		labelwhile,Rel_c,labeltrue,Com_c,labelwhile,labelfim);
 						return 1;
 					}else{return 0;}
 				}
@@ -625,20 +825,27 @@ int While(){
 	else{return 0;}
 }
 
-//DoWhile -> do { BlocoComando } while ( E ) ;
-int DoWhile(){
+//DoWhile -> do Com while ( Rel ) ;
+int DoWhile(char dowhile_c[], char lbreak[], char lcontinue[]){
+	char Rel_c[MAX_COD],Rel_p[MAX_COD],Com_c[MAX_COD];
+    char labeltrue[10],labelfim[10];
+
 	if(tk == TKDo){// do
+		geralabel(labeltrue);
+		geralabel(labelfim);
 		getToken();
-		if(BlocoComando()){
+		if(Com(Com_c, labelfim, labeltrue)){
 			if(tk == TKWhile){// while
 				getToken();
 				if(tk == TKAbreParenteses){// (
 					getToken();
-					if (E()){
+					if(Rel(Rel_c,labeltrue,labelfim)){
 						if(tk == TKFechaParenteses){// )
 							getToken();
 							if(tk == TKPontoEVirgula){// ;
 								getToken();
+								sprintf(dowhile_c,"%s:\n%s%s%s:\n",
+                                					labeltrue,Com_c,Rel_c,labelfim);
 								return 1;
 							}
 							else{F_Printf_Erro(TKPontoEVirgula);return 0;}
@@ -656,22 +863,32 @@ int DoWhile(){
 	else{return 0;}
 }
 
-//For -> for ( EV ; EV ; EV ) BlocoComando
-int For(){
+//For -> for ( E0 ; REL ; E0 ) Com
+int For(char for_c[], char lbreak[], char lcontinue[]){
+	char Rel1_c[MAX_COD],Rel1_p[MAX_COD],Rel2_c[MAX_COD],Rel2_p[MAX_COD],Rel3_c[MAX_COD],Rel3_p[MAX_COD],Com_c[MAX_COD];
+    char labelini[10],labeltrue[10],labelfim[10],labelinc[10];
+
 	if(tk == TKFor){// for
+		geralabel(labelini);
+		geralabel(labeltrue);
+		geralabel(labelfim);
+		geralabel(labelinc);
+
 		getToken();
 		if(tk == TKAbreParenteses){// (
 			getToken();
-			if (EV()){
+			if (E0(Rel1_p, Rel1_c)){
 				if(tk == TKPontoEVirgula){// ;
 					getToken();
-					if (EV()){
+					if (Rel(Rel2_c, labeltrue, labelfim)){
 						if(tk == TKPontoEVirgula){// ;
 							getToken();
-							if (EV()){
+							if (E0(Rel3_p, Rel3_c)){
 								if(tk == TKFechaParenteses){// )
 									getToken();
-									if (BlocoComando()){
+									if (Com(Com_c, labelfim, labelinc)){
+										sprintf(for_c,"%s%s:\n%s%s:\n%s%s:\n%s\tgoto %s\n%s:\n",
+														Rel1_c,labelini,Rel2_c,labeltrue,Com_c,labelinc,Rel3_c,labelini,labelfim);
 										return 1;
 									}
 									else{return 0;}
@@ -693,14 +910,7 @@ int For(){
 	else{return 0;}
 }
 
-//EV -> E | ?
-int EV(){
-	if (E()){
-		return 1;
-	}
-	else {return 1;}
-}
-
+/*
 //SwitchCase -> switch ( E ) Cases
 int SwitchCase(){
 	if(tk == TKSwitch){// switch
@@ -762,18 +972,18 @@ int Cases(){
 		}
 		else{F_Printf_Erro(TKDoisPontos);return 0;}
 	}
-	else {return 1;}
+	else{return 1;}
 }
 
 //BlocoCases -> case CharConst : G BlocoCases | default : G | ?
-int BlocoCases(){
+int BlocoCases(char Cases_c[], char lbreak[]){
 	if(tk == TKCase){// case
 		getToken();
 		if (CharConst()){
 			if(tk == TKDoisPontos){// :
 				getToken();
-				if (G()){
-					if (BlocoCases()){
+				if (G(Cases_c, "")){
+					if (BlocoCases(Cases_c, "")){
 						return 1;
 					}
 					else{return 0;}
@@ -788,18 +998,18 @@ int BlocoCases(){
 		getToken();
 		if(tk == TKDoisPontos){// :
 			getToken();
-			if (G()){
+			if (Cases_c, ""){
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{F_Printf_Erro(TKDoisPontos);return 0;}
 	}
-	else {return 1;}
+	else{return 1;}
 }
 
 //Case1 -> If | For | Switch | DoWhile | While | E | ?
-int Case1(){
+int Case1(char Case_c[], char lbreak[]){
 	if (If()){
 		return 1;
 	}
@@ -809,19 +1019,19 @@ int Case1(){
 	else if (SwitchCase()){
 		return 1;
 	}
-	else if (DoWhile()){
+	//else if (DoWhile()){
+	//	return 1;
+	//}
+	else if (While(Case_c, lbreak)){
 		return 1;
 	}
-	else if (While()){
-		return 1;
-	}
-	else if (E()){
+	else if (E(Case_c)){
 		if(tk==TKPontoEVirgula){
 			getToken();
 			return 1;
 		}else{F_Printf_Erro(TKPontoEVirgula);return 0;}
 	}
-	else {return 1;}
+	else{return 1;}
 }
 
 //CharConst -> char | constante
@@ -836,18 +1046,28 @@ int CharConst(){
 	}
 	else{F_Printf_Erro(0);return 0;}
 }
+*/
 
-//If -> if ( E ) BlocoComando Else
-int If(){
+//If -> if ( Rel ) Com Else
+int If(char if_c[MAX_COD], char lbreak[], char lcontinue[]){
+	char Rel_c[MAX_COD],Rel_p[MAX_COD],Com1_c[MAX_COD],Else_c[MAX_COD];
+    char labelelse[10],labelthen[10],labelfim[10];
+
 	if(tk == TKIf){// if
+		geralabel(labelelse);
+		geralabel(labelthen);
+		geralabel(labelfim);
+
 		getToken();
 		if(tk == TKAbreParenteses){// (
 			getToken();
-			if (E()){
+			if(Rel(Rel_c, labelthen, labelelse)){
 				if(tk == TKFechaParenteses){// )
 					getToken();
-					if (BlocoComando()){
-						if (Else()){
+					if(Com(Com1_c, lbreak, lcontinue)){
+						if(Else(Else_c, lbreak, lcontinue, labelelse, labelfim)){
+							sprintf(if_c,"%s%s:\n%s%s",
+                                Rel_c,labelthen,Com1_c,Else_c);
 							return 1;
 						}
 						else{return 0;}
@@ -863,13 +1083,62 @@ int If(){
 	else{return 0;}
 }
 
-//Else -> else If | else BlocoComando | ?
-int Else(){
-	if(tk == TKElse){// else
+//Else -> else If | else Com | ?
+int Else(char else_c[MAX_COD], char lbreak[], char lcontinue[], char labelelse[MAX_COD], char labelfim[MAX_COD]){
+	char If_c[MAX_COD],Com_c[MAX_COD];
+
+	if(tk == TKElse){ // else
 		getToken();
-		if (If()){
+		if (If(If_c, lbreak, lcontinue)){
+			sprintf(else_c,"\tgoto %s\n%s:\n%s%s:\n",labelfim, labelelse, If_c, labelfim);
 			return 1;
-		}else if (BlocoComando()){
+		}else if(Com(Com_c, lbreak, lcontinue)){
+			sprintf(else_c,"\tgoto %s\n%s:\n%s%s:\n",labelfim, labelelse, Com_c, labelfim);
+			return 1;
+		}
+		else{return 0;}
+	}
+	else{sprintf(else_c,"%s:\n",labelelse);return 1;}
+}
+
+
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> INICIO EXPRESSOES <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+//Rel -> E0
+int Rel(char Rel_c[MAX_COD], char Rel_true[MAX_COD], char Rel_false[MAX_COD]){
+	char E1_c[MAX_COD],E2_c[MAX_COD],E1_p[MAX_COD],E2_p[MAX_COD];
+
+	if (E0(E1_p, E1_c)){
+		sprintf(Rel_c, "%s\tif %s = 1 goto %s\n\tgoto %s\n", E1_c,E1_p,Rel_true,Rel_false);
+		return 1;
+	}
+	else{F_Printf_Erro(TKExpressao); return 0;}
+}
+
+//E -> E0
+int E(char Com_c[MAX_COD]){
+	char E_c[MAX_COD],E_p[MAX_COD];
+
+	if(E0(E_p, E_c)){
+		sprintf(Com_c, "%s", E_c);
+		return 1;
+	}
+	else{return 0;}
+}
+
+//E0 -> E1 E0Linha
+int E0(char E0_p[MAX_COD],char E0_c[MAX_COD]){
+	char E1_p[MAX_COD],E1_c[MAX_COD],E0L_hp[MAX_COD],E0L_sp[MAX_COD],E0L_hc[MAX_COD],E0L_sc[MAX_COD];
+	int E1_t, E0L_ht, E0L_st;
+
+	if(E1(E1_p,E1_c, &E1_t)){
+		strcpy(E0L_hc,E1_c);
+        strcpy(E0L_hp,E1_p);
+		E0L_ht = E1_t;
+		if(E0Linha(E0L_hp, E0L_sp, E0L_hc, E0L_sc, &E0L_ht, &E0L_st)){
+			strcpy(E0_c,E0L_sc);
+            strcpy(E0_p,E0L_sp);
+			//*E0_t = E0L_st;
 			return 1;
 		}
 		else{return 0;}
@@ -877,63 +1146,132 @@ int Else(){
 	else{return 0;}
 }
 
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> INICIO EXPRESSÕES <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//E0Linha -> , E1 | ?
+int E0Linha(char E0L_hp[MAX_COD], char E0L_sp[MAX_COD], char E0L_hc[MAX_COD], char E0L_sc[MAX_COD], int *E0L_ht, int *E0L_st){
+	char E1_c[MAX_COD], E0L1_hc[10000], E0L1_sc[MAX_COD], E1_p[MAX_COD], E0L1_hp[MAX_COD], E0L1_sp[MAX_COD];
+	int E1_st, E0L1_ht, E0L1_st;
 
-//E -> E1
-int E(){
-	if (E1()){
+	if(tk == TKVirgula){// ,
+		getToken();
+		if(E1(E1_p, E1_c, &E1_st)){
+			//E0L1_ht = getTipo(*E0L_ht, E1_st);
+
+			sprintf(E0L_hc,"%s%s",E0L_hc,E1_c);
+
+			if(E0Linha(E0L1_hp, E0L1_sp, E0L_hc, E0L1_sc,&E0L1_ht,&E0L1_st)){
+				strcpy(E0L_sp, E0L1_sp);
+                strcpy(E0L_sc, E0L1_sc);
+				*E0L_st = E0L1_st;
+				return 1;
+			}
+			else{return 0;}
+		}
+		else{F_Printf_Erro(TKExpressao);return 0;}
+	}
+	else{
+		strcpy(E0L_sp,E0L_hp);
+    	strcpy(E0L_sc,E0L_hc);
+		*E0L_st = *E0L_ht;
 		return 1;
 	}
-	else{return 0;}
 }
 
-//E1 -> E2 = E1 | E2 += E1 | E2 -= E1 | E2 *= E1 | E2 /= E1 | E2 %= E1 | E2
-int E1(){
-	if(E2()){
+//E1 -> E2 = E1 | E2 += E1 | E2 -= E1 | E2 *= E1 | E2 /= E1 | E2 %= E1
+int E1(char E1_p[MAX_COD],char E1_c[MAX_COD], int *E1_t){
+	char A1_p[MAX_COD],A1_c[MAX_COD],E1L_c[MAX_COD],E1L_p[MAX_COD],E1L1_hp[MAX_COD];
+	int E2_t, E12_t;
+
+	//todo mudar para E2
+	if(E3(E1L_p, E1L_c, &E2_t)){
 		if(tk == TKAtrib){// =
 			getToken();
-			if (E1()){
+			if(E1(A1_p, A1_c, &E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+
+				sprintf(E1_c,"%s%s\t%s = %s\n",A1_c,E1L_c,E1L_p,A1_p);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
-		}else if(tk == TKMaisIgual){// +=
+		}
+		else if(tk == TKMaisIgual){// +=
 			getToken();
-			if (E1()){
+			if(E1(A1_p, A1_c,&E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+
+				geratemp(E1L1_hp);
+				sprintf(E1_c,"%s%s\t%s = %s+%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
-		} else if(tk == TKMenosIgual){// -=
+		}
+		else if(tk == TKMenosIgual){// -=
 			getToken();
-			if (E1()){
+			if(E1(A1_p, A1_c,&E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+				
+				geratemp(E1L1_hp);
+				sprintf(E1_c,"%s%s\t%s = %s-%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
-		} else if(tk == TKProdIgual){// *=
+		}
+		else if(tk == TKProdIgual){// *=
 			getToken();
-			if (E1()){
+			if(E1(A1_p, A1_c,&E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+
+				geratemp(E1L1_hp);
+				sprintf(E1_c,"%s%s\t%s = %s*%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
-		} else if(tk == TKDivisaoIgual){// /=
+		}
+		else if(tk == TKDivisaoIgual){// /=
 			getToken();
-			if (E1()){
+			if(E1(A1_p, A1_c,&E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+
+				geratemp(E1L1_hp);
+				sprintf(E1_c,"%s%s\t%s = %s/%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
-		}else if(tk == TKRestoIgual){// %=
+		}
+		else if(tk == TKRestoIgual){// %=
 			getToken();
-			if (E1()){
+			if(E1(A1_p, A1_c, &E12_t)){
+				*E1_t = getTipo(E2_t, E12_t);
+				if(*E1_t != TKInt){
+					printf("Erro: Operador de %% sÃ³ Ã© possivel com valores inteiros!\n");
+					erro = 1;
+				}
+
+				geratemp(E1L1_hp);
+				sprintf(E1_c,"%s%s\t%s = %s%%%s\n\t%s = %s\n",A1_c,E1L_c,E1L1_hp,E1L_p,A1_p,E1L_p,E1L1_hp);
+				strcpy(E1_p, E1L_p);
 				return 1;
 			}else{F_Printf_Erro(TKExpressao);return 0;}
-		}else{return 1;}
+		}
+		else{
+			strcpy(E1_p,E1L_p);
+			strcpy(E1_c,E1L_c);
+			*E1_t = E2_t;
+			return 1;
+		}
 	}
 	else{return 0;}
 }
 
+/*
 //E2 -> E3 ? E1 : E1 | E3
 int E2(){
 	if(E3()){
 		if(tk == TKInterogacao){// ?
 			getToken();
-			if (E1()){
+			if(E1()){
 				if(tk == TKDoisPontos){// :
 					getToken();
-					if (E1()){
+					if(E1()){
 						return 1;
 					}
 					else{F_Printf_Erro(TKExpressao);return 0;}
@@ -944,16 +1282,26 @@ int E2(){
 		}
 		else{return 1;}
 	}
-	else if (E3()){
+	else if(E3()){
 		return 1;
 	}
 	else{return 0;}
 }
+*/
 
 //E3 -> E4 E4Linha
-int E3(){
-	if(E4()){
-		if (E3Linha()){
+int E3(char E3_p[MAX_COD],char E3_c[MAX_COD], int *E3_t){
+	char E4_p[MAX_COD],E4_c[MAX_COD],E3L_hp[MAX_COD],E3L_sp[MAX_COD],E3L_hc[MAX_COD],E3L_sc[MAX_COD];
+	int E4_t, E3L_ht, E3L_st;
+
+	if(E4(E4_p,E4_c,&E4_t)){
+		strcpy(E3L_hc,E4_c);
+        strcpy(E3L_hp,E4_p);
+		E3L_ht = E4_t;
+		if(E3Linha(E3L_hp, E3L_sp, E3L_hc, E3L_sc, &E3L_ht, &E3L_st)){
+			strcpy(E3_c,E3L_sc);
+            strcpy(E3_p,E3L_sp);
+			*E3_t = E3L_st;
 			return 1;
 		}
 		else{return 0;}
@@ -962,52 +1310,105 @@ int E3(){
 }
 
 //E3Linha -> || E4 E3Linha | ?
-int E3Linha(){
+int E3Linha(char E3L_hp[MAX_COD], char E3L_sp[MAX_COD], char E3L_hc[MAX_COD], char E3L_sc[MAX_COD], int *E3L_ht, int *E3L_st){
+	char E4_c[MAX_COD], E3L1_hc[10000], E3L1_sc[MAX_COD], E4_p[MAX_COD], E3L1_hp[MAX_COD], E3L1_sp[MAX_COD];
+	int E4_st, E3L1_ht, E3L1_st;
+
 	if(tk == TKOr){// ||
 		getToken();
-		if (E4()){
-			if (E3Linha()){
+		if(E4(E4_p, E4_c, &E4_st)){
+			E3L1_ht = TKInt;
+
+			char labeltrue[10],labelfim[10];
+			geralabel(labeltrue);
+			geralabel(labelfim);
+			geratemp(E3L1_hp);
+			
+			sprintf(E3L1_hc,"%s%s\tif %s = 1 goto %s\n\tif %s = 1 goto %s\n\t%s = 0\n\tgoto %s\n%s:\n\t%s = 1\n%s:\n", 
+							 E3L_hc,E4_c,E3L_hp,labeltrue,E4_p,labeltrue,E3L1_hp,labelfim,labeltrue,E3L1_hp,labelfim);
+
+			if(E3Linha(E3L1_hp, E3L1_sp, E3L1_hc, E3L1_sc,&E3L1_ht,&E3L1_st)){
+				strcpy(E3L_sp, E3L1_sp);
+                strcpy(E3L_sc, E3L1_sc);
+				*E3L_st = E3L1_st;
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else {return 1;}
+	else{
+		strcpy(E3L_sp,E3L_hp);
+    	strcpy(E3L_sc,E3L_hc);
+		*E3L_st = *E3L_ht;
+		return 1;
+	}
 }
 
 //E4 -> E5 E4Linha
-int E4(){
-	if(E5()){
-		if (E4Linha()){
+int E4(char E4_p[MAX_COD],char E4_c[MAX_COD], int *E4_t){
+	char E5_p[MAX_COD],E5_c[MAX_COD],E4L_hp[MAX_COD],E4L_sp[MAX_COD],E4L_hc[MAX_COD],E4L_sc[MAX_COD];
+	int E5_t, E4L_ht, E4L_st;
+
+	//todo mudar para E5
+	if(E8(E5_p,E5_c,&E5_t)){
+		strcpy(E4L_hc,E5_c);
+        strcpy(E4L_hp,E5_p);
+		E4L_ht = E5_t;
+
+		if(E4Linha(E4L_hp, E4L_sp, E4L_hc, E4L_sc, &E4L_ht, &E4L_st)){
+			strcpy(E4_c,E4L_sc);
+            strcpy(E4_p,E4L_sp);
+			*E4_t = E4L_st;
 			return 1;
 		}
 		else{return 0;}
 	}
 	else{return 0;}
-	return 1;
 }
 
 //E4Linha -> && E5 E4Linha | ?
-int E4Linha(){
+int E4Linha(char E4L_hp[MAX_COD], char E4L_sp[MAX_COD], char E4L_hc[MAX_COD], char E4L_sc[MAX_COD], int *E4L_ht, int *E4L_st){
+	char E5_c[MAX_COD], E4L1_hc[10000], E4L1_sc[MAX_COD], E5_p[MAX_COD], E4L1_hp[MAX_COD], E4L1_sp[MAX_COD];
+	int E5_st, E4L1_ht, E4L1_st;
+
 	if(tk == TKAnd){// &&
 		getToken();
-		if (E5()){
-			if (E4Linha()){
+		//todo mudar para E5
+		if(E8(E5_p, E5_c, &E5_st)){
+			E4L1_ht = TKInt;
+
+			char labeltrue[10],labelfim[10];
+			geralabel(labeltrue);
+			geralabel(labelfim);
+			geratemp(E4L1_hp);
+			
+			sprintf(E4L1_hc,"%s%s\tif %s = 0 goto %s\n\tif %s = 0 goto %s\n\t%s = 1\n\tgoto %s\n%s:\n\t%s = 0\n%s:\n", 
+								E4L_hc,E5_c,E4L_hp,labeltrue,E5_p,labeltrue,E4L1_hp,labelfim,labeltrue,E4L1_hp,labelfim);
+			
+			if(E4Linha(E4L1_hp, E4L1_sp, E4L1_hc, E4L1_sc, &E4L1_ht, &E4L1_st)){
+				strcpy(E4L_sp, E4L1_sp);
+                strcpy(E4L_sc, E4L1_sc);
+				*E4L_st = E4L1_st;
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else {return 1;}
-	return 1;
+	else{
+		strcpy(E4L_sp,E4L_hp);
+    	strcpy(E4L_sc,E4L_hc);
+		*E4L_st = *E4L_ht;
+		return 1;
+	}
 }
 
+/*
 //E5 -> E6 E5Linha
 int E5(){
 	if(E6()){
-		if (E5Linha()){
+		if(E5Linha()){
 			return 1;
 		}
 		else{return 0;}
@@ -1019,21 +1420,21 @@ int E5(){
 int E5Linha(){
 	if(tk == TKOrParaBits){// |
 		getToken();
-		if (E6()){
-			if (E5Linha()){
+		if(E6()){
+			if(E5Linha()){
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else {return 1;}
+	else{return 1;}
 }
 
 //E6 -> E7 E6Linha
 int E6(){
 	if(E7()){
-		if (E6Linha()){
+		if(E6Linha()){
 			return 1;
 		}
 		else{return 0;}
@@ -1045,21 +1446,21 @@ int E6(){
 int E6Linha(){
 	if(tk == TKXor){// ^
 		getToken();
-		if (E7()){
-			if (E6Linha()){
+		if(E7()){
+			if(E6Linha()){
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else {return 1;}
+	else{return 1;}
 }
 
 //E7 -> E8 E7Linha
 int E7(){
 	if(E8()){
-		if (E7Linha()){
+		if(E7Linha()){
 			return 1;
 		}
 		else{return 0;}
@@ -1071,113 +1472,101 @@ int E7(){
 int E7Linha(){
 	if(tk == TKAndParaBits){// &
 		getToken();
-		if (E8()){
-			if (E7Linha()){
+		if(E8()){
+			if(E7Linha()){
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else {return 1;}
+	else{return 1;}
+}
+*/
+
+// E8 -> E9 == E9 | E9 != E9 | ?
+int E8(char E8_p[MAX_COD], char E8_c[MAX_COD], int *E8_t){
+    char E9_c[MAX_COD],E2_c[MAX_COD],E9_p[MAX_COD],E2_p[MAX_COD];
+	int E9_t, E2_t;
+
+    if (E9(E9_p, E9_c, &E9_t)){
+        char op[10];
+        if (tk==TKIgual) strcpy(op,"==");
+        else if (tk==TKDiferente) strcpy(op,"<>");
+
+		switch (tk){
+			case TKIgual:
+			case TKDiferente:
+		
+				getToken();
+				if (E9(E2_p, E2_c, &E2_t)){
+					*E8_t = TKInt;
+
+					char E8L_p[MAX_COD];
+					geratemp(E8L_p);
+					sprintf(E8_c,"%s%s\t%s = %s %s %s\n",E9_c,E2_c,E8L_p,E9_p,op,E2_p);
+					strcpy(E8_p, E8L_p);
+					return 1;
+				}
+				return 0;
+			break;
+        default:
+            strcpy(E8_c, E9_c);
+			strcpy(E8_p, E9_p);
+			*E8_t = E9_t;
+            return 1;
+        }
+    }
+    return 0;
 }
 
-//E8 -> E9 E8Linha
-int E8(){
-	if(E9()){
-		if (E8Linha()){
-			return 1;
-		}
-		else{return 0;}
-	}
-	else{return 0;}
+// E9 -> E10 > E11 | E10 < E11 | E10 >= E11 | E10 <= E11 | ?
+int E9(char E9_p[MAX_COD], char E9_c[MAX_COD], int *E9_t){
+    char E10_c[MAX_COD],E2_c[MAX_COD],E10_p[MAX_COD],E2_p[MAX_COD];
+	int E10_t, E2_t;
+
+	//todo mudar para E10
+    if (E11(E10_p, E10_c, &E10_t)){
+        char op[10];
+        if 		(tk==TKMaior) 	   strcpy(op,">");
+        else if (tk==TKMenor) 	   strcpy(op,"<");
+        else if (tk==TKMaiorIgual) strcpy(op,">=");
+        else if (tk==TKMenorIgual) strcpy(op,"<=");
+
+		switch (tk){
+			case TKMaior:
+			case TKMenor:
+			case TKMaiorIgual:
+			case TKMenorIgual:
+		
+				getToken();
+				//todo mudar para E10
+				if (E11(E2_p, E2_c, &E2_t)){					
+					*E9_t = TKInt;
+					
+					char E9L_p[MAX_COD];
+					geratemp(E9L_p);
+					sprintf(E9_c,"%s%s\t%s = %s %s %s\n",E10_c,E2_c,E9L_p,E10_p,op,E2_p);
+					strcpy(E9_p, E9L_p);
+					return 1;
+				}
+				return 0;
+			break;
+        default:
+            strcpy(E9_c, E10_c);
+			strcpy(E9_p, E10_p);
+			*E9_t = E10_t;
+            return 1;
+        }
+    }
+    return 0;
 }
 
-//E8Linha -> == E9 E8Linha | != E9 E8Linha | ?
-int E8Linha(){
-	if(tk == TKIgual){// ==
-		getToken();
-		if (E9()){
-			if (E8Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else if(tk == TKDiferente){// !=
-		getToken();
-		if (E9()){
-			if (E8Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else {return 1;}
-}
-
-//E9 -> E10 E9Linha
-int E9(){
-	if(E10()){
-		if (E9Linha()){
-			return 1;
-		}
-		else{return 0;}
-	}
-	else{return 0;}
-}
-
-//E9Linha -> < E10 E9Linha | <= E10 E9Linha | >= E10 E9Linha | > E10 E9Linha | ?
-int E9Linha(){
-	if(tk == TKMenor){// <
-		getToken();
-		if (E10()){
-			if (E9Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else if(tk == TKMenorIgual){// <=
-		getToken();
-		if (E10()){
-			if (E9Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else if(tk == TKMaiorIgual){// >=
-		getToken();
-		if (E10()){
-			if (E9Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else if(tk == TKMaior){// >
-		getToken();
-		if (E10()){
-			if (E9Linha()){
-				return 1;
-			}
-			else{return 0;}
-		}
-		else{F_Printf_Erro(TKExpressao);return 0;}
-	}
-	else {return 1;}
-}
-
+/*
 //E10 -> E11 E10Linha
-int E10(){
-	if(E11()){
-		if (E10Linha()){
+int E10(char E10_p[MAX_COD], char E10_c[MAX_COD]){
+	if(E11(E10_p, E10_c)){
+		if(E10Linha(E10_p, E10_c)){
 			return 1;
 		}
 		else{return 0;}
@@ -1186,11 +1575,11 @@ int E10(){
 }
 
 //E10Linha -> << E11 E10Linha | >> E11 E10Linha | ?
-int E10Linha(){
+int E10Linha(char E10L_p[MAX_COD], char E10L_c[MAX_COD]){
 	if(tk == TKDeslocamentoEsquerda){// <<
 		getToken();
-		if (E11()){
-			if (E10Linha()){
+		if(E11(E10L_p, E10L_c)){
+			if(E10Linha(E10L_p, E10L_c)){
 				return 1;
 			}
 			else{return 0;}
@@ -1199,8 +1588,8 @@ int E10Linha(){
 	}
 	else if(tk == TKDeslocamentoDireita){// >>
 		getToken();
-		if (E11()){
-			if (E10Linha()){
+		if(E11(E10L_p, E10L_c)){
+			if(E10Linha(E10L_p, E10L_c)){
 				return 1;
 			}
 			else{return 0;}
@@ -1209,11 +1598,21 @@ int E10Linha(){
 	}
 	else {return 1;}
 }
+*/
 
 //E11 -> E12 E11Linha
-int E11(){
-	if(E12()){
-		if (E11Linha()){
+int E11(char E11_p[MAX_COD], char E11_c[MAX_COD], int *E11_t){
+	char E12_p[MAX_COD],E12_c[MAX_COD],E11L_hp[MAX_COD],E11L_sp[MAX_COD],E11L_hc[MAX_COD],E11L_sc[MAX_COD];
+	int E12_t, E11L_ht, E11L_st;
+
+	if(E12(E12_p, E12_c, &E12_t)){
+		strcpy(E11L_hc,E12_c);
+        strcpy(E11L_hp,E12_p);
+		E11L_ht = E12_t;
+		if(E11Linha(E11L_hp, E11L_sp, E11L_hc, E11L_sc, &E11L_ht, &E11L_st)){
+			strcpy(E11_c,E11L_sc);
+            strcpy(E11_p,E11L_sp);
+			*E11_t = E11L_st;
 			return 1;
 		}
 		else{return 0;}
@@ -1222,11 +1621,22 @@ int E11(){
 }
 
 //E11Linha -> + E12 E11Linha | - E12 E11Linha | ?
-int E11Linha(){
+int E11Linha(char E11L_hp[MAX_COD], char E11L_sp[MAX_COD], char E11L_hc[MAX_COD], char E11L_sc[MAX_COD], int *E11L_ht, int *E11L_st){
+	char E12_c[MAX_COD], E11L1_hc[10000], E11L1_sc[MAX_COD], E12_p[MAX_COD], E11L1_hp[MAX_COD], E11L1_sp[MAX_COD];
+	int E12_st, E11L1_ht, E11L1_st;
+
 	if(tk == TKSoma){// +
 		getToken();
-		if (E12()){
-			if (E11Linha()){
+		if(E12(E12_p, E12_c, &E12_st)){
+			E11L1_ht = getTipo(*E11L_ht, E12_st);
+
+			geratemp(E11L1_hp);
+            sprintf(E11L1_hc,"%s%s\t%s = %s+%s\n", E11L_hc, E12_c, E11L1_hp, E11L_hp, E12_p);
+
+			if(E11Linha(E11L1_hp, E11L1_sp, E11L1_hc, E11L1_sc, &E11L1_ht, &E11L1_st)){
+				strcpy(E11L_sp, E11L1_sp);
+                strcpy(E11L_sc, E11L1_sc);
+				*E11L_st = E11L1_st;
 				return 1;
 			}
 			else{return 0;}
@@ -1235,21 +1645,43 @@ int E11Linha(){
 	}
 	else if(tk == TKMenos){// -
 		getToken();
-		if (E12()){
-			if (E11Linha()){
+		if(E12(E12_p, E12_c, &E12_st)){
+			E11L1_ht = getTipo(*E11L_ht, E12_st);
+
+			geratemp(E11L1_hp);
+            sprintf(E11L1_hc,"%s%s\t%s = %s-%s\n", E11L_hc, E12_c, E11L1_hp, E11L_hp, E12_p);
+			if(E11Linha(E11L1_hp, E11L1_sp, E11L1_hc, E11L1_sc, &E11L1_ht, &E11L1_st)){
+				strcpy(E11L_sp, E11L1_sp);
+                strcpy(E11L_sc, E11L1_sc);
+				*E11L_st = E11L1_st;
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else {return 1;}
+	else{
+		strcpy(E11L_sp,E11L_hp);
+		strcpy(E11L_sc,E11L_hc);
+		*E11L_st = *E11L_ht;
+		return 1;
+	}
 }
 
 //E12 -> E13 E12Linha
-int E12(){
-	if(E13()){
-		if (E12Linha()){
+int E12(char E12_p[MAX_COD], char E12_c[MAX_COD], int *E12_t){
+	char E13_c[MAX_COD],E13_p[MAX_COD],E12L_hp[MAX_COD],E12L_sp[MAX_COD],E12L_hc[MAX_COD],E12L_sc[MAX_COD];
+	int E13_t, E12L_ht, E12L_st;
+
+	if(E13(E13_p, E13_c, &E13_t)){
+		strcpy(E12L_hc,E13_c);
+        strcpy(E12L_hp,E13_p);
+		E12L_ht = E13_t;
+
+		if(E12Linha(E12L_hp, E12L_sp, E12L_hc, E12L_sc, &E12L_ht, &E12L_st)){
+			strcpy(E12_c,E12L_sc);
+            strcpy(E12_p,E12L_sp);
+			*E12_t = E12L_st;
 			return 1;
 		}
 		else{return 0;}
@@ -1258,11 +1690,22 @@ int E12(){
 }
 
 //E12Linha -> * E13 E12Linha | / E13 E12Linha | % E13 E12Linha | ?
-int E12Linha(){
+int E12Linha(char E12L_hp[MAX_COD], char E12L_sp[MAX_COD], char E12L_hc[MAX_COD],char E12L_sc[MAX_COD], int *E12L_ht, int *E12L_st){
+	char E13_p[MAX_COD],E13_c[MAX_COD],E12L1_hc[10000],E12L1_sc[MAX_COD],E12L1_hp[MAX_COD],E12L1_sp[MAX_COD];
+	int E13_st, E12L1_ht, E12L1_st;
+
 	if(tk == TKProd){// *
 		getToken();
-		if (E13()){
-			if (E12Linha()){
+		if(E13(E13_p, E13_c, &E13_st)){			
+			E12L1_ht = getTipo(*E12L_ht, E13_st);
+
+			geratemp(E12L1_hp);
+            sprintf(E12L1_hc,"%s%s\t%s = %s*%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
+
+			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc, &E12L1_ht, &E12L1_st)){
+				strcpy(E12L_sp,E12L1_sp);
+                strcpy(E12L_sc,E12L1_sc);
+				*E12L_st = E12L1_st;
 				return 1;
 			}
 			else{return 0;}
@@ -1271,68 +1714,116 @@ int E12Linha(){
 	}
 	else if(tk == TKDivisao){// /
 		getToken();
-		if (E13()){
-			if (E12Linha()){
+		if(E13(E13_p, E13_c, &E13_st)){
+			E12L1_ht = getTipo(*E12L_ht, E13_st);
+			
+			geratemp(E12L1_hp);
+            sprintf(E12L1_hc,"%s%s\t%s = %s/%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
+
+			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc, &E12L1_ht, &E12L1_st)){
+				strcpy(E12L_sp,E12L1_sp);
+                strcpy(E12L_sc,E12L1_sc);
+				*E12L_st = E12L1_st;
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else if(tk == TKResto){// %
+	else if(tk == TKResto){// %		
 		getToken();
-		if (E13()){
-			if (E12Linha()){
+		if(E13(E13_p, E13_c, &E13_st)){		
+			E12L1_ht = getTipo(*E12L_ht, E13_st);
+
+			if(E12L1_ht != TKInt){
+				printf("Erro: Operador de %% sÃ³ Ã© possivel com valores inteiros\n");
+				erro = 1;
+			}
+
+			geratemp(E12L1_hp);
+            sprintf(E12L1_hc,"%s%s\t%s = %s%%%s\n",E12L_hc,E13_c,E12L1_hp,E12L_hp,E13_p);
+
+			if(E12Linha(E12L1_hp, E12L1_sp, E12L1_hc, E12L1_sc, &E12L1_ht, &E12L1_st)){
+				strcpy(E12L_sp,E12L1_sp);
+                strcpy(E12L_sc,E12L1_sc);
+				*E12L_st = E12L1_st;
 				return 1;
 			}
 			else{return 0;}
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else {return 1;}
+	else{
+		strcpy(E12L_sp,E12L_hp);
+		strcpy(E12L_sc,E12L_hc);
+		*E12L_st = *E12L_ht;
+		return 1;
+	}
 }
 
 //E13 -> ++ E13 | -- E13 | ! E13 | E14
-int E13(){
+int E13(char E13_p[MAX_COD], char E13_c[MAX_COD], int *E13_t){
 	if(tk == TKDuploMais){// ++
 		getToken();
-		if (E13()){
+		if(E13(E13_p, E13_c, E13_t)){
 			return 1;
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
 	else if(tk == TKDuploMenos){// --
 		getToken();
-		if (E13()){
+		if(E13(E13_p, E13_c, E13_t)){
 			return 1;
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
 	else if(tk == TKNegacao){// !
 		getToken();
-		if (E13()){
+		if(E13(E13_p, E13_c, E13_t)){
 			return 1;
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else if (E14()){
+	else if(E14(E13_p, E13_c, E13_t)){
 		return 1;
 	}
 	else{return 0;}
 }
 
 //E14 -> id | id ++ | id -- | id ( CallFuncParam ) | inteiro | flutuante | ( E )
-int E14(){
+int E14(char E14_p[MAX_COD], char E14_c[MAX_COD], int *E14_t){
+	char E14L_c[MAX_COD],E14L_p[MAX_COD];
+
 	if(tk == TKId){// id
+		strcpy(E14_c, "");
+        strcpy(E14_p, lex);
+		*E14_t = getTipoDecVarEscopo(E14_p);
+		isVarDec(lex);
+
 		getToken();
 		if(tk == TKDuploMais){// ++
 			getToken();
+
+			char label[10], E14_hp[10], E14L_hp[10];
+			geratemp(label);
+			geratemp(E14_hp);
+			geratemp(E14L_hp);		
+
+            sprintf(E14L_c,"\t%s = 1\n\t%s = %s+%s\n\t%s = %s\n", E14_hp,E14L_hp,E14_p,E14_hp,E14_p,E14L_hp);
+			sprintf(E14_c, "\t%s = %s\n%s", label,E14_p,E14L_c);
+
+			// retorna temporario que possui o valor antes do incremento
+			strcpy(E14_p, label);
+
 			return 1;
-		}else if(tk == TKDuploMenos){// --
+		}
+		else if(tk == TKDuploMenos){// --
 			getToken();
 			return 1;
-		}else if(tk == TKAbreParenteses){// (
+		}
+		else if(tk == TKAbreParenteses){// (
 			getToken();
+			/*
 			if(CallFuncParam()){
 				if(tk == TKFechaParenteses){// )
 					getToken();
@@ -1340,179 +1831,224 @@ int E14(){
 				}
 				else{F_Printf_Erro(TKFechaParenteses);return 0;}
 			}
-			else{return 0;}
-		}else{
-			return 1;
+			else{return 0;}*/
 		}
+		else if(tk == TKAbreColchetes){			
+			getToken();
+			if (E0(E14L_p, E14L_c)){
+				if(tk == TKFechaColchetes){
+					getToken();
+					// Bidimencional
+					if(tk == TKAbreColchetes){
+						char E14L2_c[MAX_COD],E14L2_p[MAX_COD];
+						getToken();
+						if (E0(E14L2_p, E14L2_c)){
+							if(tk == TKFechaColchetes){
+								getToken();
+								//todo setar qtd de colunas da matriz
+								//todo setar o sizeof da variavel
+								char QTD_COL[10],TAM_TYPE[10];
+								char E14_2p[10],E14_3p[10],E14_4p[10];
+								strcpy(QTD_COL, "10");
+								strcpy(TAM_TYPE, "4");
+								geratemp(E14_2p);
+								geratemp(E14_3p);
+								geratemp(E14_4p);
+
+								sprintf(E14_c,"%s\t%s = %s*%s\n%s\t%s = %s+%s\n\t%s = %s*%s\n",
+									E14L_c,E14_2p,E14L_p,QTD_COL,
+									E14L2_c,E14_3p,E14_2p,E14L2_p,
+									E14_4p,E14_3p,TAM_TYPE);
+								sprintf(E14_p,"%s[%s]",E14_p,E14_4p);
+								return 1;
+							}
+							else{F_Printf_Erro(TKFechaColchetes);return 0;}
+						}
+						else{F_Printf_Erro(TKExpressao);return 0;}
+					}
+					else{
+						// Unidimencional
+						strcpy(E14_c,E14L_c);
+						sprintf(E14_p,"%s[%s]",E14_p,E14L_p);
+						return 1;
+					}
+				}
+				else{F_Printf_Erro(TKFechaColchetes);return 0;}
+			}
+			else{F_Printf_Erro(TKExpressao);return 0;}
+		}
+		else{return 1;}
 	}
 	else if(tk == TKInteiro){// INTEIRO
+		geratemp(E14_p);
+        sprintf(E14_c,"\t%s = %s\n",E14_p,lex);
+		*E14_t = TKInt;
+
 		getToken();
 		return 1;
 	}
 	else if(tk == TKFlutuante){// FLUTUANTE
+		geratemp(E14_p);
+        sprintf(E14_c,"\t%s = %s\n",E14_p,lex);
+		*E14_t = TKFloat;
+
 		getToken();
 		return 1;
 	}
 	else if(tk == TKAbreParenteses){// (
+		//char E14L_c[MAX_COD],E14L_p[MAX_COD];
 		getToken();
-		if (E()){
+		if (E0(E14L_p, E14L_c)){
 			if(tk == TKFechaParenteses){// )
 				getToken();
+				strcpy(E14_c,E14L_c);
+                strcpy(E14_p,E14L_p);
 				return 1;
 			}
 			else{F_Printf_Erro(TKFechaParenteses);return 0;}
 		}
 		else{F_Printf_Erro(TKExpressao);return 0;}
 	}
-	else if(tk==-1) return 0;
+	else if(tk==-1){return 0;}
 	else{return 0;}
 }
 
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> FIM EXPRESSÕES <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! >>>>> FIM EXPRESSOES <<<<< !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+// Break -> break ;
+int Break(char Break_c[MAX_COD], char lbreak[]){
+	if(tk==TKBreak){
+		getToken();
+		if(tk == TKPontoEVirgula){// ;
+			getToken();
+        	if(lbreak[0]=='\0'){F_Printf_Erro(TKBreak);return 0;}
 
-//BlocoComando -> { G } | While | DoWhile | DecGeral | If | For | SwitchCase | break | E | ?
-int BlocoComando(){
-	if(tk == TKAbreChaves){// {
-		getToken();
-		if(G()){
-			if(tk == TKFechaChaves){// }
-				getToken();
-				return 1;
-			}
-			else{F_Printf_Erro(TKFechaChaves);return 0;}
-		}
-		else{return 0;}
-	}
-	else if (While()){
-		return 1;
-	}
-	else if (DoWhile()){
-		return 1;
-	}
-	else if (DecGeral()){
-		return 1;
-	}
-	else if (If()){
-		return 1;
-	}
-	else if (For()){
-		return 1;
-	}
-	else if (SwitchCase()){
-		return 1;
-	}
-	else if(tk==TKBreak) {
-		getToken();
-		if(tk==TKPontoEVirgula){
-			getToken();
-			if (G()){
-				return 1;
-			}
-			else{return 0;}
-		}else{F_Printf_Erro(TKPontoEVirgula);return 0;}
-	}
-	else if (E()){
-		if(tk==TKPontoEVirgula) {
-			getToken();
+        	sprintf(Break_c,"\tgoto %s\n",lbreak);
 			return 1;
-		}else{F_Printf_Erro(TKPontoEVirgula);return 0;}
-	}
-	else{return 1;}
+		}
+		else{F_Printf_Erro(TKPontoEVirgula);return 0;}
+    }
+	else return 0;
 }
 
-//G -> DecGeral G | While G | DoWhile G | For G | If G | SwitchCase G | break | E G | ?
-int G(){
-	if(DecGeral()){
-		if (G()){
-			return 1;
-		}
-		else{return 0;}
-	}
-	else if(While()){
-		if (G()){
-			return 1;
-		}
-		else{return 0;}
-	}
-	else if(DoWhile()){
-		if (G()){
-			return 1;
-		}
-		else{return 0;}
-	}
-	else if(For()){
-		if (G()){
-			return 1;
-		}
-		else{return 0;}
-	}
-	else if(If()){
-		if (G()){
-			return 1;
-		}
-		else{return 0;}
-	}
-	else if (SwitchCase()){
-		if (G()){
-			return 1;
-		}
-		else{return 0;}
-	}
-	else if(tk==TKBreak) {
+// Continue -> continue ;
+int Continue(char Continue_c[MAX_COD], char lcontinue[]){
+	if(tk==TKContinue){
 		getToken();
-		if(tk==TKPontoEVirgula){
+		if(tk == TKPontoEVirgula){// ;
 			getToken();
-			if (G()){
-				return 1;
-			}
-			else{return 0;}
-		}else{F_Printf_Erro(TKPontoEVirgula);return 0;}
-	}
-	else if(Return()){
-		if (G()){
+        	if(lcontinue[0]=='\0'){F_Printf_Erro(TKContinue);return 0;}
+
+        	sprintf(Continue_c,"\tgoto %s\n",lcontinue);
 			return 1;
 		}
-		else{return 0;}
-	}
-	else if(E()){
-		if(tk==TKPontoEVirgula) {
-			getToken();
-			if (G()){
-				return 1;
-			}
-			else{return 0;}
-		}else{F_Printf_Erro(TKPontoEVirgula);return 0;}
-	}
-	else{
+		else{F_Printf_Erro(TKPontoEVirgula);return 0;}
+    }
+	else return 0;
+}
+
+// Exp -> E ;
+int Exp(char Exp_c[MAX_COD]){
+    char E_c[MAX_COD];
+	
+    if (E(E_c)){
+        if (tk==TKPontoEVirgula){
+            getToken();
+            sprintf(Exp_c, "%s", E_c);
+            return 1;
+        }
+		else{F_Printf_Erro(TKPontoEVirgula);return 0;}
+    }
+	else return 0;
+}
+
+// Com_Composto -> { Com }
+int Com_Composto(char Comp_c[], char lbreak[], char lcontinue[]){
+    char Com_C[MAX_COD];
+
+	if(tk==TKAbreChaves){
+		empilha();
+		getToken();
+		strcpy(Comp_c,"");
+		while (tk!=TKFechaChaves){
+			if(!Com(Com_C, lbreak, lcontinue)) return 0;
+			strcat(Comp_c,Com_C);
+		}
+		desempilha();
+		getToken();
 		return 1;
 	}
+	else{return 0;}
+}
+
+// Com -> If | DecGeral | While | DoWhile | For | Exp | Break | Continue | Com_Composto | ?
+int Com(char Com_c[], char lbreak[], char lcontinue[]) {
+
+    if(If(Com_c, lbreak, lcontinue)) return 1;
+	else if(DecGeral(Com_c)) return 1;
+	else if(While(Com_c, lbreak, lcontinue)) return 1;
+	else if(DoWhile(Com_c, lbreak, lcontinue)) return 1;
+	else if(For(Com_c, lbreak, lcontinue)) return 1;
+	else if(Exp(Com_c))	return 1;
+    else if(Break(Com_c, lbreak)) return 1;
+	else if(Continue(Com_c, lcontinue)) return 1;
+	else if(Com_Composto(Com_c, lbreak, lcontinue)) return 1;	
+    else{strcpy(Com_c,"");return 1;}
 }
 
 int main(int argc, char *argv[]){
-	setbuf(stdout, NULL);
+	char Com_C[MAX_COD];
 
-	in = fopen("entrada.cpp", "r");
-	if(in == NULL){
-		printf("\nArquivo nao pode ser aberto");
+	// IMPORTACAO ARQUIVO FONTE
+	if((in = fopen("entrada.cpp", "r")) == NULL){
+		printf("Arquivo nao pode ser aberto!\n");
 		exit(1);
 	}
 
-	// EXPORTASÃO DOS DADOS LEXICOS
-	out = fopen("Saida.lex", "w");
-	if(out == NULL) {
-		printf("Arquivo não pode ser criado\n");
+	// EXPORTACAO DOS DADOS LEXICOS
+	if((outLex = fopen("saida.lex", "w")) == NULL) {
+		printf("Arquivo nao pode ser criado\n");
 		exit(1);
 	}
-	//cria cabeçalho do arquivo de saída
-	fprintf(out, "		   Token	   Lexema   Linha   Coluna\n");
+	//cria cabecalho do arquivo de saida
+	fprintf(outLex, "		   Token	   Lexema   Linha   Coluna\n");
 
+	// EXPORTACAO DO CODIGO C3E
+	if((outC3E = fopen("saida.kvmp", "wt"))==NULL){
+        printf("Erro na abertura do arquivo de saida");
+        exit(1);
+    }
 
+	// ZERA A PILHA DE DECLARACOES
+	for(int i=0;i<TAM_PILHA;i++){
+		curVarLocal[i] = -1;
+	}
+
+	// INICIA ANALISE DO ARQUIVO
 	proxC();
 	getToken();
-	G();
-	if (erro==true) printf("Erro no reconhecimento\n");
-	else printf("Reconheceu OK!\n");
 
-	system("pause");
+	// INICIALIZA CODIGO COMO VAZIO PARA NAO IMPRIMIR SUJEIRA
+	Com_C[0] = '\0';
+	
+	// PERCORRE TODO O ARQUIVO
+	while(c!=EOF && !erro){
+        if(Com(Com_C, "", "") && !erro){
+			fprintf(outC3E, "%s", Com_C);
+			printf("%s", Com_C);
+		}
+    }
+
+	if(!erro) printf("Reconheceu OK!\n");
+
+	#ifdef DEBUG
+	// DEBUG SEMANTICO
+	for(int i=0;i<=curVarGlobal;i++){
+		printf("%d - %s - %d %d\n", varGlobal[i].tipo, varGlobal[i].nome, varGlobal[i].linha, varGlobal[i].coluna);
+	}
+	#endif
+
+	fclose(in);
+	fclose(outLex);
+	fclose(outC3E);
 }

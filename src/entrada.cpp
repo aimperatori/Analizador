@@ -1,7 +1,6 @@
-int main(void) {
-	
-	if(1) { break; } a++;
-	
-	
-	return 1;
-}
+int i, a, b;
+
+float f;
+
+for(i=0;i<10;i++)
+    f = 3;
