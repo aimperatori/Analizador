@@ -2,12 +2,5 @@ int i, a, b;
 
 float f;
 
-while(1){
-    if(2){
-        continue;
-    }
-    break;
-}
-
-q = 3;
-break;
+for(i=0;i<10;i++)
+    f = 3;

@@ -1,14 +1,17 @@
+	T000 = 0
+	i = T000
 LB000:
-	T000 = 1
-	if T000 = 1 goto LB001
+	T001 = 10
+	T002 = i < T001
+	if T002 = 1 goto LB001
 	goto LB002
 LB001:
-	T001 = 2
-	if T001 = 1 goto LB004
-	goto LB003
-LB004:
-	goto LB000
+	T006 = 3
+	f = T006
 LB003:
-	goto LB002
+	T003 = i
+	T004 = 1
+	T005 = i+T004
+	i = T005
 	goto LB000
 LB002:
